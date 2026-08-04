@@ -1,0 +1,11 @@
+# CODEOWNERS placeholder — Stage 0.5
+# Replace with real GitHub/GitLab usernames or teams before production.
+
+* @unified-clank-maintainers
+
+/clank-runtime/ @unified-clank-maintainers
+/clank-fleet/ @unified-clank-maintainers
+/clank-desktop/ @unified-clank-maintainers
+
+# Architecture documents require explicit review
+/unified-clank-architecture*.md @unified-clank-maintainers

@@ -1,0 +1,9 @@
+# NON-PRODUCTION TEMPLATE
+# Stage 0 scaffold for a future monitoring service.
+# No concrete monitoring stack is chosen.
+
+services:
+  monitoring:
+    environment:
+      CLANK_ENV: "stage0"
+    restart: "no"

@@ -1,0 +1,23 @@
+# NON-PRODUCTION TEMPLATE
+# Stage 0 scaffold only. Do not use for real deployments.
+# Deferred decisions: image registry, real volume paths, resource limits,
+# Tailscale sidecar, healthcheck implementation, restart policy details.
+
+services:
+  fleet-api:
+    # image: placeholder — build context and registry deferred
+    build:
+      context: ..
+      dockerfile: templates/Dockerfile.fleet-api
+    # No public port exposure by default.
+    # ports:
+    #   - "8000:8000"   # intentionally commented; do not expose publicly
+    environment:
+      # All values are placeholders. See .env.example and config conventions.
+      CLANK_FLEET_API_HOST: "0.0.0.0"
+      CLANK_FLEET_API_PORT: "8000"
+      CLANK_ENV: "stage0"
+    # volumes: deferred — no hard-coded NAS paths
+    # networks: deferred
+    restart: "no"
+    # No database service, no Docker socket mount, no credentials.

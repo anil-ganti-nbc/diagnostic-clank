@@ -1,0 +1,11 @@
+# NON-PRODUCTION TEMPLATE
+# Stage 0 scaffold for a future central store service.
+# SQLite vs other engines remains an unresolved decision (Amendment 9).
+# No database image is declared here.
+
+services:
+  central-store:
+    # Placeholder only. Engine choice deferred.
+    environment:
+      CLANK_ENV: "stage0"
+    restart: "no"

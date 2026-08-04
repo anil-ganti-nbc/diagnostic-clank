@@ -1,0 +1,29 @@
+# TEMPLATE — NON-PRODUCTION path assumptions. Map host paths explicitly.
+# No public wildcard ports. No Docker socket. No Synology hard-codes.
+
+services:
+  {{CLANK_ID}}:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: {{CLANK_ID}}:stage1
+    container_name: {{CLANK_ID}}
+    restart: "no"   # prefer external scheduler invoking `compose run`
+    environment:
+      {{CLANK_ENV_PREFIX}}_OPEN_BROWSER: "0"
+      {{CLANK_ENV_PREFIX}}_DATA_DIR: /app/data
+      # Secrets via host env / secret manager — never commit
+      # {{CLANK_ENV_PREFIX}}_WEBHOOK: ${{CLANK_ENV_PREFIX}}_WEBHOOK:-}
+    volumes:
+      - {{CLANK_ID}}_data:/app/data
+    healthcheck:
+      test: ["CMD", "{{CLI_NAME}}", "health"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 20s
+    # ports:   # keep commented; bind 127.0.0.1 only if dashboard needed
+    #   - "127.0.0.1:{{DASHBOARD_PORT}}:{{DASHBOARD_PORT}}"
+
+volumes:
+  {{CLANK_ID}}_data:

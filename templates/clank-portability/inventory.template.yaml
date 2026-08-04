@@ -1,0 +1,14 @@
+# TEMPLATE — Stage 0.5 inventory draft fields only
+clanks:
+  - id: {{CLANK_ID}}
+    display_name: "{{DISPLAY_NAME}}"
+    repository: local:{{CLANK_ID}}
+    version: "{{VERSION}}"
+    contract_version: "0.1.0-stage0"
+    runtime_version: "0.0.1.dev0"
+    release_channel: production
+    operational_state: unknown
+    scheduler_mode: external
+    health_mode: local-cli
+    data_paths: []
+    evidence_paths: []

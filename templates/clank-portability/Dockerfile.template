@@ -1,0 +1,35 @@
+# TEMPLATE — replace {{CLANK_ID}}, {{PACKAGE_NAME}}, {{ENTRY_MODULE}}
+# Linux AMD64 production target. No Synology paths. No public ports.
+FROM python:3.12-slim-bookworm
+
+LABEL clank.id="{{CLANK_ID}}"
+LABEL clank.stage="1"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    # Disable GUI/browser helpers inside containers
+    {{CLANK_ENV_PREFIX}}_OPEN_BROWSER=0
+
+WORKDIR /app
+
+RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin clank
+
+# Copy only what the package needs to install and run
+COPY pyproject.toml README.md ./
+COPY src ./src
+# COPY config ./config   # if config ships in-repo
+COPY scripts ./scripts
+
+RUN pip install --upgrade pip \
+    && pip install . \
+    && chmod +x /app/scripts/*.sh || true
+
+RUN mkdir -p /app/data \
+    && chown -R clank:clank /app
+
+USER clank
+
+ENTRYPOINT ["/bin/sh", "/app/scripts/entrypoint.sh"]
+# One-shot command suitable for external cron/compose run
+CMD ["run"]

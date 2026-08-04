@@ -1,0 +1,11 @@
+# NON-PRODUCTION TEMPLATE
+# Stage 0 scaffold for a future ingestion worker.
+# No database image. No real volume paths. No credentials.
+
+services:
+  ingestion-worker:
+    # image and build deferred
+    environment:
+      CLANK_ENV: "stage0"
+      # Outbox paths and central store connection are deferred decisions.
+    restart: "no"

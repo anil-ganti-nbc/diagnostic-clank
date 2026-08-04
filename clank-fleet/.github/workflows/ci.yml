@@ -1,0 +1,26 @@
+name: Stage 0 CI
+
+on:
+  push:
+    branches: [main, stage0]
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install packages
+        run: |
+          pip install -e ../clank-runtime/[dev] || pip install -e ./clank-runtime/[dev] || true
+          pip install -e .[dev]
+      - name: Ruff
+        run: ruff check src tests
+      - name: Tests
+        run: pytest -q
+      - name: Package build
+        run: python -m build || pip install build && python -m build
+    # No deployment, no GHCR, no secrets, no NAS steps.

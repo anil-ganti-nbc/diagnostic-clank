@@ -1,5 +1,7 @@
 # Unified Clank Infrastructure — Stage 0.5
 
+> Status: Stage 0.5 skeleton — no production behavior
+
 Skeleton + architecture hardening. **No production behavior.**
 
 ```

@@ -34,7 +34,7 @@ from clank_runtime.version import (
 
 
 def test_package_version() -> None:
-    assert __version__ == "0.0.1.dev0"
+    assert __version__ == "0.1.0.dev0"
 
 
 def test_runtime_identity_roundtrip() -> None:
@@ -89,13 +89,14 @@ def test_runtime_identity_forbids_extra_fields() -> None:
 
 
 def test_health_payload_defaults() -> None:
-    payload = HealthPayload()
+    payload = HealthPayload(clank_id="example-clank")
     assert payload.contract_version == HEALTH_CONTRACT_VERSION
-    assert payload.operational_state == OperationalState.UNKNOWN
-    assert payload.ingestion_state == IngestionState.UNKNOWN
+    assert payload.overall_status == OperationalState.UNKNOWN
+    assert payload.is_stale_cache is False
     data = payload.model_dump()
     restored = HealthPayload.model_validate(data)
-    assert restored.operational_state == OperationalState.UNKNOWN
+    assert restored.overall_status == OperationalState.UNKNOWN
+    assert restored.clank_id == "example-clank"
 
 
 def test_operation_result_not_implemented() -> None:

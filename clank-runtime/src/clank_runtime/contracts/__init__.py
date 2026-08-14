@@ -5,6 +5,20 @@ Import from submodules for clarity; this package re-exports the primary types.
 
 from __future__ import annotations
 
+
+from clank_runtime.contracts.delivery import (
+    CollectionHealthReport,
+    ConfigInvariantViolation,
+    DeliveryCanaryResult,
+    DeliveryHealthReport,
+    DeploymentAcceptanceChecklist,
+    DualDomainHealth,
+    FailureCorpusSpecimen,
+    NotificationAuthority,
+    check_production_config_invariants,
+    compose_release_state,
+    delivery_state_from_invariants,
+)
 from clank_runtime.contracts.actions import (
     OfflineQueueItem,
     classify_operation,
@@ -19,6 +33,12 @@ from clank_runtime.contracts.adapter import (
 )
 from clank_runtime.contracts.enums import (
     ActionSafetyClass,
+    ProductionMode,
+    NotificationAuthorityRole,
+    DeploymentAcceptanceState,
+    DeliveryHealthState,
+    CollectionHealthState,
+    ClankReleaseState,
     DeliveryStatus,
     FailureClass,
     FallbackLevel,
@@ -62,6 +82,23 @@ from clank_runtime.contracts.operations import (
 from clank_runtime.contracts.telemetry import TelemetryEnvelope, TelemetryEventRecord
 
 __all__ = [
+    "delivery_state_from_invariants",
+    "compose_release_state",
+    "check_production_config_invariants",
+    "ProductionMode",
+    "NotificationAuthorityRole",
+    "NotificationAuthority",
+    "FailureCorpusSpecimen",
+    "DualDomainHealth",
+    "DeploymentAcceptanceState",
+    "DeploymentAcceptanceChecklist",
+    "DeliveryHealthState",
+    "DeliveryHealthReport",
+    "DeliveryCanaryResult",
+    "ConfigInvariantViolation",
+    "CollectionHealthReport",
+    "CollectionHealthState",
+    "ClankReleaseState",
     "ALLOWED_SOURCE_TRANSITIONS",
     "ActionSafetyClass",
     "AdapterCapabilities",

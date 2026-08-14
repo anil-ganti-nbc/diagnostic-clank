@@ -176,3 +176,10 @@ All inter-component contracts versioned independently (`TELEMETRY_CONTRACT_VERSI
 Existing Clanks join via adapters without collector/DB rewrites.  
 Stage roadmap: see `STAGE_ROADMAP_V3.md`.  
 NAS readiness and desktop fallback gates: see gate documents.
+
+## 22. Production Delivery Contract
+
+See `PRODUCTION_DELIVERY_CONTRACT.md`. Fleet-wide invariant: collectors green is
+necessary but not sufficient. Dual-domain health, release-state vocabulary,
+canary, single notification authority, and deployment acceptance gates are
+defined in `clank_runtime.contracts.delivery`.

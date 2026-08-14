@@ -51,3 +51,9 @@ No jumping to deployment or production GUI polish before contracts and gates. Ar
 ## 12. Prefer UNKNOWN to a false diagnosis
 
 Failure taxonomy includes UNKNOWN. Do not force inaccurate classification.
+
+## 13. Green collectors are necessary; green delivery is mandatory
+
+Collection health and delivery health are separate domains. Release state
+HEALTHY requires both, plus verified deployment acceptance. See
+PRODUCTION_DELIVERY_CONTRACT.md and ADR 0007.

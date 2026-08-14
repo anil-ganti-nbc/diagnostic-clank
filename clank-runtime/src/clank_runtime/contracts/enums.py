@@ -193,3 +193,84 @@ class OwnershipRole(StrEnum):
     UNCLAIMED = "unclaimed"
     CONTESTED = "contested"
     UNKNOWN = "unknown"
+
+
+# --- Production Delivery Contract (fleet-wide invariant) ---------------------
+
+
+class CollectionHealthState(StrEnum):
+    """Health of collection / persistence only.
+
+    Must never be collapsed with delivery health into a single misleading HEALTHY.
+    """
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+    NEVER_RUN = "never_run"
+
+
+class DeliveryHealthState(StrEnum):
+    """Health of the external notification / delivery path.
+
+    Independent of collection. Missing webhook with notifications enabled is
+    DEGRADED or FAILED, never overall HEALTHY.
+    """
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    NOT_CONFIGURED = "not_configured"
+    LIMITED = "limited"
+    UNKNOWN = "unknown"
+
+
+class ClankReleaseState(StrEnum):
+    """Mandatory fleet-wide release-state vocabulary.
+
+    HEALTHY = collection AND delivery contract verified.
+    DEGRADED = core collection works, but a required output path is unavailable.
+    PARTIAL = deployment exists but has not passed full production acceptance.
+    FAILED = core collection/persistence path broken.
+    BASELINING = intentionally suppressing external intelligence while initial state is established.
+    """
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    PARTIAL = "partial"
+    FAILED = "failed"
+    BASELINING = "baselining"
+    UNKNOWN = "unknown"
+
+
+class ProductionMode(StrEnum):
+    """Baseline / validation / production mode distinction.
+
+    Production semantics must never silently inherit baseline defaults
+    (emit_events=False, notify=False).
+    """
+
+    BASELINE = "baseline"
+    VALIDATION = "validation"
+    PRODUCTION = "production"
+
+
+class DeploymentAcceptanceState(StrEnum):
+    """Deployment is not complete when image builds and timers are green."""
+
+    VERIFIED = "verified"
+    PARTIAL = "partial"
+    DEGRADED = "degraded"
+    FAILED = "failed"
+    UNKNOWN = "unknown"
+
+
+class NotificationAuthorityRole(StrEnum):
+    """Exactly one host is authoritative for each external notification channel."""
+
+    AUTHORITATIVE_SENDER = "authoritative_sender"
+    COLLECTION_ONLY = "collection_only"
+    GUI_ONLY = "gui_only"
+    DISABLED = "disabled"
+    UNKNOWN = "unknown"

@@ -7,6 +7,7 @@ no production databases, no secret material.
 from __future__ import annotations
 
 from clank_runtime.version import (
+    DELIVERY_CONTRACT_VERSION,
     ADAPTER_CONTRACT_VERSION,
     CACHE_SCHEMA_VERSION,
     EVENT_CONTRACT_VERSION,
@@ -24,6 +25,7 @@ __all__ = [
     "__version__",
     "ADAPTER_CONTRACT_VERSION",
     "CACHE_SCHEMA_VERSION",
+    "DELIVERY_CONTRACT_VERSION",
     "EVENT_CONTRACT_VERSION",
     "FALLBACK_CONTRACT_VERSION",
     "HEALTH_CONTRACT_VERSION",

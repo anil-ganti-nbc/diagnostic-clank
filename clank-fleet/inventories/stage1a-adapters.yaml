@@ -1,0 +1,18 @@
+# Stage 1A adapter manifest — not a deployment
+clanks:
+  - clank_id: oem-radar
+    adapter: oem_radar
+    production_runtime: external
+    health_mode: adapter
+    telemetry_mode: adapter
+    fallback_level: 0
+    nas_ready: false
+    delivery_visibility: full
+  - clank_id: feature-phone-clank
+    adapter: feature_phone
+    production_runtime: external
+    health_mode: adapter
+    telemetry_mode: adapter
+    fallback_level: 0
+    nas_ready: false
+    delivery_visibility: limited

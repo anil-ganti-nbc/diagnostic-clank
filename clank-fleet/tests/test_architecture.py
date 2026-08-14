@@ -116,16 +116,22 @@ def test_no_windows_drive_paths_in_source() -> None:
 
 
 def test_no_forbidden_production_imports() -> None:
+    """Stage 1A: adapters may use stdlib sqlite3 read-only; nothing else may."""
     for base in (FLEET / "src", RUNTIME / "src", DESKTOP / "src"):
         for path in _iter_py_files(base):
             tree = ast.parse(_read(path), filename=str(path))
+            allow_sqlite = "adapters" in path.parts
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:
                         root = alias.name.split(".")[0]
+                        if root == "sqlite3" and allow_sqlite:
+                            continue
                         assert root not in FORBIDDEN_IMPORT_ROOTS, f"{path}: import {alias.name}"
                 elif isinstance(node, ast.ImportFrom) and node.module:
                     root = node.module.split(".")[0]
+                    if root == "sqlite3" and allow_sqlite:
+                        continue
                     assert root not in FORBIDDEN_IMPORT_ROOTS, f"{path}: from {node.module}"
 
 
@@ -180,16 +186,14 @@ def test_fleet_api_ping_200_and_behavior_501() -> None:
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
-    assert "Stage 0" in body["message"]
-    # must not over-claim
+    # Stage 1A message — must not over-claim production health
     lowered = body["message"].lower()
-    assert "healthy" not in lowered or "shell" in lowered
+    assert "healthy" not in lowered or "shell" in lowered or "read-only" in lowered
 
+    # Mutation / domain routes remain 501
     paths = (
         "/api/v1/fleet",
         "/api/v1/fleet/status",
-        "/api/v1/clanks",
-        "/api/v1/clanks/example-clank/health",
         "/api/v1/clanks/example-clank/runs",
         "/api/v1/clanks/example-clank/collectors",
         "/api/v1/records",
@@ -208,6 +212,11 @@ def test_fleet_api_ping_200_and_behavior_501() -> None:
         data = resp.json()
         assert data["error_code"] == "STAGE0_NOT_IMPLEMENTED"
         assert "api_contract_version" in data
+
+    # Stage 1A read routes are live (may be empty/stale without DBs)
+    list_resp = client.get("/api/v1/clanks")
+    assert list_resp.status_code == 200
+    assert "clanks" in list_resp.json()
 
 
 def test_cli_version_and_not_implemented() -> None:
@@ -250,12 +259,12 @@ def test_inventory_yaml_syntax() -> None:
 
 
 def test_no_existing_clank_imports_or_deps() -> None:
-    for base in (FLEET / "src", RUNTIME / "src", DESKTOP / "src"):
+    """Stage 1A allows adapter modules to name Clanks; runtime/desktop still may not import them."""
+    for base in (RUNTIME / "src", DESKTOP / "src"):
         for path in _iter_py_files(base):
             text = _read(path).lower()
             for token in EXISTING_CLANK_TOKENS:
                 if token in text:
-                    # allow only in comments that say "example" or "do not"
                     lines = [ln for ln in text.splitlines() if token in ln]
                     for ln in lines:
                         assert (
@@ -265,6 +274,13 @@ def test_no_existing_clank_imports_or_deps() -> None:
                             or "must not" in ln
                             or "never" in ln
                         ), f"{path}: references existing clank token '{token}'"
+    # Fleet may reference clank ids in adapters/; still forbid importing their packages
+    for path in _iter_py_files(FLEET / "src"):
+        text = _read(path)
+        assert "import oem_radar" not in text
+        assert "from oem_radar" not in text
+        assert "import feature_phone_clank" not in text
+        assert "from feature_phone_clank" not in text
 
 
 def test_runtime_does_not_import_fleet_or_desktop() -> None:

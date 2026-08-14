@@ -163,3 +163,94 @@ def rollback(
 
 if __name__ == "__main__":
     app()
+
+
+# --- Stage 1A read-only fleet commands ---------------------------------------
+
+fleet_app = typer.Typer(name="fleet", help="Stage 1A read-only Fleet inspection.")
+app.add_typer(fleet_app, name="fleet")
+
+
+def _registry_from_env():
+    from clank_fleet.adapters.factory import build_default_registry
+
+    return build_default_registry()
+
+
+@fleet_app.command("list")
+def fleet_list(
+    json_out: bool = typer.Option(False, "--json", help="JSON output"),
+) -> None:
+    """List registered Clanks and operational state."""
+    registry = _registry_from_env()
+    rows = registry.fleet_summary()
+    if json_out:
+        typer.echo(json.dumps({"clanks": rows}, indent=2, default=str))
+        return
+    if not rows:
+        typer.echo("No Clanks registered.")
+        return
+    typer.echo("CLANK FLEET")
+    typer.echo("")
+    for row in rows:
+        stale = " (STALE)" if row.get("is_stale") else ""
+        typer.echo(f"{row['clank_id']}")
+        typer.echo(f"  state: {row['operational_state']}{stale}")
+        typer.echo(f"  delivery visibility: {row['delivery_visibility']}")
+        if row.get("message"):
+            typer.echo(f"  note: {row['message']}")
+        typer.echo("")
+
+
+@fleet_app.command("status")
+def fleet_status(
+    clank_id: str = typer.Argument(..., help="Clank id"),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show status for one Clank."""
+    registry = _registry_from_env()
+    try:
+        registry.get(clank_id)
+    except KeyError:
+        typer.echo(json.dumps({"error": "unknown_clank", "clank_id": clank_id}), err=True)
+        raise typer.Exit(code=2)
+    status_row = registry.safe_status(clank_id)
+    data = status_row.model_dump(mode="json")
+    if json_out:
+        typer.echo(json.dumps(data, indent=2, default=str))
+    else:
+        typer.echo(json.dumps(data, indent=2, default=str))
+
+
+@fleet_app.command("health")
+def fleet_health(
+    clank_id: str = typer.Argument(...),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Show health envelope for one Clank."""
+    registry = _registry_from_env()
+    if clank_id not in registry.list_ids():
+        typer.echo(json.dumps({"error": "unknown_clank", "clank_id": clank_id}), err=True)
+        raise typer.Exit(code=2)
+    health = registry.safe_health(clank_id)
+    typer.echo(json.dumps(health.model_dump(mode="json"), indent=2, default=str))
+
+
+@fleet_app.command("telemetry")
+def fleet_telemetry(
+    clank_id: str = typer.Argument(...),
+    limit: int = typer.Option(10, "--limit", "-n"),
+) -> None:
+    """Show recent telemetry for one Clank."""
+    registry = _registry_from_env()
+    if clank_id not in registry.list_ids():
+        typer.echo(json.dumps({"error": "unknown_clank", "clank_id": clank_id}), err=True)
+        raise typer.Exit(code=2)
+    rows = registry.safe_telemetry(clank_id, limit=limit)
+    typer.echo(
+        json.dumps(
+            {"clank_id": clank_id, "telemetry": [r.model_dump(mode="json") for r in rows]},
+            indent=2,
+            default=str,
+        )
+    )

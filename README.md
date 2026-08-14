@@ -1,6 +1,6 @@
 # Unified Clank Platform
 
-> **Status:** Stage 0.75 — Architecture v3 contracts after the Great Clank Audit  
+> **Status:** Stage 1A — Fleet foundation + OEM Radar & Feature Phone read-only adapters  
 > **No production behaviour. No deployment. No merge to main without review.**
 
 Control plane, reference contracts, and survivability layer for the heterogeneous Clank army.
@@ -55,7 +55,7 @@ Production scrapers, live NAS paths, real auth, production DB mutation, Hermes/C
 
 ## Stages
 
-See `STAGE_ROADMAP_V3.md`. Current branch target: **0.75**.
+See `STAGE_ROADMAP_V3.md`. Current branch target: **1A** (on top of Architecture v3).
 
 ## License
 

@@ -11,12 +11,12 @@ from clank_fleet.fleet_api.routes import register_routes
 def create_app() -> FastAPI:
     """Create the Stage 0 Fleet API application shell.
 
-    This factory registers route stubs only. No production behavior is wired.
+    Registers Stage 1A read-only clank routes; mutation routes remain stubs.
     """
     app = FastAPI(
         title="Clank Fleet API",
         description=(
-            "Stage 0 skeleton. Behavior endpoints return HTTP 501. "
+            "Stage 1A read-only Fleet. Mutation endpoints return HTTP 501. "
             "Only the process-level ping is operational."
         ),
         version=__version__,

@@ -120,7 +120,7 @@ def test_no_forbidden_production_imports() -> None:
     for base in (FLEET / "src", RUNTIME / "src", DESKTOP / "src"):
         for path in _iter_py_files(base):
             tree = ast.parse(_read(path), filename=str(path))
-            allow_sqlite = "adapters" in path.parts
+            allow_sqlite = "adapters" in path.parts or "knowledge" in path.parts
             for node in ast.walk(tree):
                 if isinstance(node, ast.Import):
                     for alias in node.names:

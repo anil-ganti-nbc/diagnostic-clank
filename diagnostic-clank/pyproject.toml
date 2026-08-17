@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "diagnostic-clank"
+version = "0.1.0"
+description = "Diagnostic Clank v0.1 -- local Archivist GUI (knowledge history, no autonomous diagnosis)"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.7,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/diagnostic_clank"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

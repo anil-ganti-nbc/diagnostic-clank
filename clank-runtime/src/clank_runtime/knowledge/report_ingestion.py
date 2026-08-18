@@ -306,9 +306,6 @@ class ReportIngestionStore:
             source_chunks = [c[0] for c in chunks if c[4] > match.start() and c[3] < end]
             primary = self._map_clank(block)
             status = self._resolution(block)
-            ftype = (
-                "ARCHITECTURE_RISK" if "RISK /" in block or "RISK /" in block[:500] else "INCIDENT"
-            )
             failure = next(
                 (
                     x
@@ -339,13 +336,13 @@ class ReportIngestionStore:
                     block[:500],
                     self._epistemic(block),
                     status,
-                    ftype,
+                    self._finding_type(block, failure),
                     failure,
                     None,
                     root,
                     self._field(block, "WHAT WAS DONE"),
                     lesson,
-                    _json([]),
+                    _json(self._responsibility(block)),
                     _json([]),
                     _json([]),
                     "AUTO_EXTRACTED",
@@ -355,23 +352,56 @@ class ReportIngestionStore:
 
     def _map_clank(self, block: str) -> str:
         low = block.lower()
-        for clank_id in self.registry.list_ids():
-            if clank_id.replace("-", " ") in low or clank_id in low:
-                return clank_id
+        normalized = re.sub(r"[^a-z0-9]+", " ", low)
+        for registration in self.registry.list_all():
+            for candidate in (registration.clank_id, registration.display_name or ""):
+                alias = re.sub(r"[^a-z0-9]+", " ", candidate.lower()).strip()
+                if alias and re.search(rf"\b{re.escape(alias)}\b", normalized):
+                    return registration.clank_id
         return "UNKNOWN"
 
     def _resolution(self, block: str) -> str:
         upper = block.upper()
         if "UNFIXABLE_EXTERNAL" in upper or "NOT DIRECTLY FIXABLE" in upper:
             return "UNFIXABLE_EXTERNAL"
+        normalized = re.sub(r"[^A-Z]+", "_", upper)
         for value in ("PARTIALLY_FIXED", "FIXED", "ONGOING", "OPEN", "BY_DESIGN", "SUPERSEDED"):
-            if value in upper:
+            if value in normalized:
                 return value
         return "UNKNOWN"
 
+    def _finding_type(self, block: str, failure: str | None) -> str:
+        upper = block.upper()
+        if "BY DESIGN" in upper or "BY_DESIGN" in upper:
+            return "BY_DESIGN"
+        if "RISK /" in upper or "NEAR-MISS" in upper:
+            return "ARCHITECTURE_RISK"
+        if "SOURCE / EXTERNAL" in upper or "EXTERNAL / NOT DIRECTLY FIXABLE" in upper:
+            return "EXTERNAL_DEPENDENCY_FAILURE"
+        if any(agent in upper for agent in ("CHATGPT", "CLAUDE", "CODEX", "GROK", "GEMINI")):
+            return "AGENT_JUDGEMENT_FAILURE"
+        return failure or "INCIDENT"
+
+    def _responsibility(self, block: str) -> list[str]:
+        upper = block.upper()
+        labels = (
+            "CLANK",
+            "ARCHITECTURE",
+            "SOURCE / EXTERNAL",
+            "USER / OPERATOR",
+            "CHATGPT",
+            "CLAUDE",
+            "CODEX",
+            "GROK",
+            "GEMINI",
+            "SHARED",
+            "UNKNOWN",
+        )
+        return [label for label in labels if label in upper]
+
     def _field(self, block: str, name: str) -> str | None:
         match = re.search(
-            rf"(?ms)^{re.escape(name)}:\s*\n(.+?)(?=\n[A-Z][A-Z /_-]+:\s*\n|\n-{(10,)}|\Z)", block
+            rf"(?ms)^{re.escape(name)}:\s*\n(.+?)(?=\n[A-Z][A-Z /_-]+:\s*\n|\n-{{10,}}|\Z)", block
         )
         return match.group(1).strip() if match else None
 

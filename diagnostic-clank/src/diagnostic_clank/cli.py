@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
@@ -82,6 +83,25 @@ def cmd_submit(args: argparse.Namespace) -> int:
         extra_footer=footer,
     )
     print(json.dumps({"written": str(dest), "inbox": str(reports.inbox)}, indent=2))
+    return 0
+
+
+def cmd_identity(_: argparse.Namespace) -> int:
+    """Provenance claim for a running instance -- never trust a checkout or
+    tag alone. Deliberately reports 'unknown' rather than guessing when
+    DIAGNOSTIC_CLANK_SOURCE_REVISION wasn't baked in at build time (see
+    native/docker: GIT_REVISION build-arg -> this env var -> this command)."""
+    revision = os.environ.get("DIAGNOSTIC_CLANK_SOURCE_REVISION", "unknown")
+    print(
+        json.dumps(
+            {
+                "application": "DiagnosticClank",
+                "source_revision": revision,
+                "source_revision_short": revision[:12] if revision != "unknown" else "unknown",
+            },
+            indent=2,
+        )
+    )
     return 0
 
 
@@ -179,6 +199,9 @@ def main(argv: list[str] | None = None) -> int:
     p_restore.add_argument("backup_dir", help="Path to a backup directory produced by 'backup'")
     p_restore.add_argument("dest", help="Isolated destination state directory (never the live data dir)")
     p_restore.set_defaults(func=cmd_restore)
+
+    p_identity = sub.add_parser("identity", help="Report the source revision baked into this build")
+    p_identity.set_defaults(func=cmd_identity)
 
     args = parser.parse_args(argv)
     return int(args.func(args) or 0)

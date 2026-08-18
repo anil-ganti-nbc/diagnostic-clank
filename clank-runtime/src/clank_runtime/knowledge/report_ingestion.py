@@ -304,7 +304,8 @@ class ReportIngestionStore:
             incident_id = incident_id.strip()
             title = title.strip()
             source_chunks = [c[0] for c in chunks if c[4] > match.start() and c[3] < end]
-            primary = self._map_clank(block)
+            section = self._section_context(text, match.start())
+            primary = self._map_clank(f"{section}\n{block}")
             status = self._resolution(block)
             failure = next(
                 (
@@ -360,8 +361,12 @@ class ReportIngestionStore:
                     return registration.clank_id
         return "UNKNOWN"
 
+    def _section_context(self, text: str, offset: int) -> str:
+        sections = list(re.finditer(r"(?m)^# SECTION [A-Z] — .+$", text[:offset]))
+        return sections[-1].group(0) if sections else ""
+
     def _resolution(self, block: str) -> str:
-        upper = block.upper()
+        upper = (self._field(block, "STATUS") or block[:400]).upper()
         if "UNFIXABLE_EXTERNAL" in upper or "NOT DIRECTLY FIXABLE" in upper:
             return "UNFIXABLE_EXTERNAL"
         normalized = re.sub(r"[^A-Z]+", "_", upper)
@@ -383,7 +388,7 @@ class ReportIngestionStore:
         return failure or "INCIDENT"
 
     def _responsibility(self, block: str) -> list[str]:
-        upper = block.upper()
+        upper = (self._field(block, "BLAME / CONTRIBUTION") or "").upper()
         labels = (
             "CLANK",
             "ARCHITECTURE",

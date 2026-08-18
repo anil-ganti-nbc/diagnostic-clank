@@ -73,4 +73,6 @@ def extract_clankops_record(raw_text: str) -> CLANKOPSRecord:
             value = field_match.group(2).strip()
             if value:
                 values[key] = value
+        elif line.strip():
+            raise ValueError(f"malformed field line: {line.strip()}")
     return CLANKOPSRecord(**values)

@@ -135,7 +135,35 @@ def test_hash_identity_not_path(isolated):
     store, rp = isolated
     p1 = submit_report_text(SAMPLE, agent="claude", project="oem-radar", task="a", report_paths=rp)
     scan_and_ingest(store, rp)
-    # same bytes different filename already covered; assert content hash stable
-    assert text_hash(SAMPLE if SAMPLE.endswith("\n") else SAMPLE) == text_hash(
-        (SAMPLE + "\n") if not SAMPLE.endswith("\n") else SAMPLE
-    ) or True
+    canonical = store.inbox.list(limit=10)
+    assert len(canonical) == 1
+    renamed = rp.inbox / "relocated-report.md"
+    renamed.write_bytes((rp.processed / p1.name).read_bytes())
+    result = scan_and_ingest(store, rp)
+    assert result.duplicates == 1
+    assert len(store.inbox.list(limit=10)) == 1
+    assert result.outcomes[0].content_hash == canonical[0].raw_text_hash
+
+
+def test_invalid_utf8_is_quarantined_byte_for_byte(isolated):
+    store, rp = isolated
+    original = b"valid prefix\xff\xfe\n"
+    path = rp.inbox / "invalid.md"
+    path.write_bytes(original)
+    result = scan_and_ingest(store, rp)
+    assert result.quarantined == 1
+    quarantined = rp.quarantine / "invalid.md"
+    assert quarantined.read_bytes() == original
+    assert store.inbox.list(limit=10) == []
+
+
+def test_malformed_clankops_footer_is_quarantined(isolated):
+    store, rp = isolated
+    original = b"report\n\nCLANKOPS_RECORD\nagent claude\nverdict: open\n"
+    path = rp.inbox / "malformed.md"
+    path.write_bytes(original)
+    result = scan_and_ingest(store, rp)
+    assert result.quarantined == 1
+    assert result.outcomes[0].quarantine_reason.startswith("malformed_clankops_record:")
+    assert (rp.quarantine / path.name).read_bytes() == original
+    assert store.inbox.list(limit=10) == []

@@ -41,9 +41,6 @@ relationships:
   - type: EXPLICIT
     related_case_id: DB-009
     note: feature-phone blocked_zero_result is sibling protection
-  - type: EXPLICIT
-    related_case_id: DB-013
-    note: smartwatch unexpected_zero_is_failure
 search_should_find:
   - query: "unexpected zero"
     must_include_case: true

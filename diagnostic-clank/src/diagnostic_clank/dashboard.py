@@ -600,6 +600,16 @@ def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HT
                         session_label=form.get("session_label", [None])[0] or None,
                     )
                     self._redirect(f"/reports/{result.output.output_id}"); return
+                if path == "/file-inbox/scan":
+                    from diagnostic_clank.report_pipeline import scan_and_ingest
+                    from diagnostic_clank.paths import resolve_report_paths, resolve_state_paths
+                    reports = resolve_report_paths()
+                    scan = scan_and_ingest(store, reports)
+                    summary = (
+                        f"scanned={scan.scanned} ingested={scan.ingested} "
+                        f"duplicates={scan.duplicates} quarantined={scan.quarantined}"
+                    )
+                    self._html(200, render_file_inbox(store, summary)); return
                 self.send_error(404)
             except (KeyError, ValueError) as exc:
                 self._html(400, _shell("overview", "Error", f'<div class=card>Request error: {e(exc)}</div>'))

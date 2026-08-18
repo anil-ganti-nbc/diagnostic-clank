@@ -137,14 +137,12 @@ def _ingest_one(
 
     try:
         raw_bytes = path.read_bytes()
-        raw_text = raw_bytes.decode("utf-8")
-    except UnicodeDecodeError:
         try:
-            raw_text = path.read_bytes().decode("utf-8", errors="replace")
-            # still preserve bytes identity via hash of original
-            raw_bytes = path.read_bytes()
-        except OSError as exc:
-            return _quarantine(report_paths, path, outcome, f"unreadable:{exc}")
+            raw_text = raw_bytes.decode("utf-8")
+        except UnicodeDecodeError:
+            # Invalid evidence is never lossy-decoded or entered into the
+            # text-only canonical store. Quarantine moves the original bytes.
+            return _quarantine(report_paths, path, outcome, "invalid_utf8")
     except OSError as exc:
         return _quarantine(report_paths, path, outcome, f"unreadable:{exc}")
 
@@ -153,7 +151,10 @@ def _ingest_one(
 
     digest = text_hash(raw_text)
     outcome.content_hash = digest
-    clankops = extract_clankops_record(raw_text)
+    try:
+        clankops = extract_clankops_record(raw_text)
+    except ValueError as exc:
+        return _quarantine(report_paths, path, outcome, f"malformed_clankops_record:{exc}")
     outcome.clankops = clankops
 
     agent_family = _infer_agent_family(name, clankops)

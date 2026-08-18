@@ -170,3 +170,17 @@ def test_reimporting_identical_report_does_not_duplicate(running_server):
     _post(port, "/reports", {"agent_family": "claude", "primary_clank_id": "fleet-wide", "raw_text": raw})
     _, body = _get(port, "/reports")
     assert body.count("duplicate detection test content") <= 1 or body.count("<tr>") <= 2  # header row + 1 data row
+
+
+def test_file_inbox_scan_route_ingests_report(running_server, monkeypatch, tmp_path):
+    port, paths, store = running_server
+    report_root = tmp_path / "reports"
+    monkeypatch.setenv("CLANKOPS_REPORT_ROOT", str(report_root))
+    report_root.joinpath("inbox").mkdir(parents=True)
+    report = report_root / "inbox" / "gui-scan.md"
+    report.write_text("GUI scan report\n", encoding="utf-8")
+    status, body = _post(port, "/file-inbox/scan", {})
+    assert status == 200
+    assert "ingested=1" in body
+    assert not report.exists()
+    assert any(r.raw_text == "GUI scan report\n" for r in store.inbox.list(limit=10))

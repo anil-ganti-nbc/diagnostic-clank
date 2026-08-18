@@ -406,7 +406,7 @@ class ReportIngestionStore:
 
     def _field(self, block: str, name: str) -> str | None:
         match = re.search(
-            rf"(?ms)^{re.escape(name)}:\s*\n(.+?)(?=\n[A-Z][A-Z /_-]+:\s*\n|\n-{{10,}}|\Z)", block
+            rf"(?ms)^{re.escape(name)}:\s*\n(.+?)(?=\n[A-Z][A-Z /_-]+:\s*|\n-{{10,}}|\Z)", block
         )
         return match.group(1).strip() if match else None
 

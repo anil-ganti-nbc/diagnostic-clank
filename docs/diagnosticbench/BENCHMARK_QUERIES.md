@@ -15,3 +15,5 @@ Every answer must retain provenance (evidence ids / source reports).
 | Source gaps that missed stories | L-OEM-003, L-OEM-004, L-FGT-001 |
 | Agent diagnosis later disproven | Stage-2 cases (e.g. L-OEM-001 initial claim) |
 | What is known about Smartphone Samsung collector? | L-SMART-001 + UNKNOWN where incomplete |
+| OEM Radar found a new product page, but an older sibling uses the same chassis. Is the new page stale? | DB-011; sibling/family history does not establish target-SKU age; verify exact chronology before dismissal |
+| A product family launched last year but a new CPU/GPU variant appeared today. Is it editorially new? | DB-011; potentially yes—evaluate variant-level novelty independently |

@@ -1,0 +1,40 @@
+case_id: DB-006
+title: Watch Clank shared SQLite writer contention under timer fan-out
+affected_clank: watch-clank
+period: "2026-08 (busy-timeout remediation)"
+incident_family: infrastructure_contention
+evidence_status: CONFIRMED_L_CONFIRMED_FIX
+confidence: high
+raw_evidence_requirements:
+  - kind: audit_excerpt
+    source_agent: system
+    notes: Programme history — 60s busy timeout; shared-writer under timer fan-out
+  - kind: agent_report
+    source_agent: unknown
+    must_preserve_verbatim: true
+    notes: Full incident report text still to be attached by owner corpus
+expected:
+  classification: [INFRASTRUCTURE_FAILURE, STATE_CONTENTION]
+  status: RESOLVED
+  root_cause: "Per-source locking does not eliminate contention on a shared SQLite writer under concurrent timer fan-out."
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  resolution_linked: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-006-c1
+    text: "Per-source locks make concurrent collectors safe on one SQLite file"
+    authority_domain: agent_assertion
+    expected_fate: superseded
+fix: "SQLite busy timeout configured to 60 seconds (and related contention handling)."
+lesson: "Per-source locking ≠ shared-writer safety under timer fan-out."
+clankops_consequence: "Shared-state timer fan-out requires explicit contention validation before deployment."
+search_should_find:
+  - query: "busy timeout"
+    must_include_case: true
+  - query: "SQLite contention"
+    must_include_case: true
+sources_surveyed:
+  - Owner/programme references to 60-second busy-timeout remediation
+  - Cross-container PID locking lesson in Unified docs (related family)

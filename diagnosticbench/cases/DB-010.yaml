@@ -1,0 +1,30 @@
+case_id: DB-010
+title: Feature Phone / native client — stale .app vs canonical bundle confusion
+affected_clank: feature-phone-clank
+incident_family: native_client_acceptance
+evidence_status: HISTORICAL_L_INCOMPLETE_EVIDENCE
+confidence: medium
+raw_evidence_requirements:
+  - kind: owner_note
+    source_agent: owner
+    must_preserve_verbatim: true
+    notes: Owner field-test of actual launcher required; full report text pending corpus
+expected:
+  classification: [EXECUTION_PROVENANCE, OWNER_ACCEPTANCE_FAILURE]
+  status: OPEN
+  root_cause: UNKNOWN
+  root_cause_must_not_be_invented: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-010-c1
+    text: "Packaging/build checks passed so native client is field-test ready"
+    authority_domain: agent_assertion
+    expected_fate: disputed
+lesson: "BUILD_SUCCESS ≠ OWNER_FIELD_TEST_ACCEPTANCE. Owner-facing launcher must itself be acceptance-tested."
+clankops_consequence: "Central launcher path is a first-class acceptance surface."
+unresolved_questions:
+  - Exact frozen .app path and SHA involved
+  - Whether failure was stale binary, wrong working directory, or runtime crash
+sources_surveyed:
+  - Programme references to frozen macOS app / stale build confusion

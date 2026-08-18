@@ -1,0 +1,4 @@
+case_id: REPORT-005
+title: unresolved incident language remains UNKNOWN
+expected:
+  unknown_root_cause_not_invented: true

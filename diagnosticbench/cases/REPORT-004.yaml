@@ -1,0 +1,6 @@
+case_id: REPORT-004
+title: malformed filename / oversized / empty
+expected:
+  quarantine: true
+  canonical_db_unharmed: true
+  no_invented_metadata: true

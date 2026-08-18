@@ -71,7 +71,7 @@ class AgentOutputInbox:
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.registry = registry
-        self._con = sqlite3.connect(self.db_path)
+        self._con = sqlite3.connect(self.db_path, check_same_thread=False)
         self._con.row_factory = sqlite3.Row
         self._con.executescript(SCHEMA)
         self._con.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('schema_version','1')")
@@ -80,12 +80,30 @@ class AgentOutputInbox:
     def close(self) -> None:
         self._con.close()
 
+    def find_by_hash(self, raw_text_hash: str) -> AgentOutputRecord | None:
+        row = self._con.execute(
+            "SELECT * FROM agent_outputs WHERE raw_text_hash=? ORDER BY created_at ASC LIMIT 1",
+            (raw_text_hash,),
+        ).fetchone()
+        return self._row(row) if row else None
+
     def save(self, *, agent_family: AgentFamily, primary_clank_id: str, raw_text: str,
              output_type: OutputType = OutputType.GENERAL_NOTE,
              related_clank_ids: list[str] | None = None, misc_source: str | None = None,
-             session_label: str | None = None, related_diagnostic_case_id: str | None = None) -> AgentOutputRecord:
+             session_label: str | None = None, related_diagnostic_case_id: str | None = None,
+             _duplicate_of: list[str] | None = None) -> AgentOutputRecord:
+        """Content-hash deduplicated: re-saving identical raw_text returns the
+        existing canonical record instead of inserting a second copy. The
+        duplicate attempt is still observable via _duplicate_of (an
+        operational log list the caller may append to), never silently lost,
+        but never becomes a second canonical evidence row either."""
         if not raw_text.strip():
             raise ValueError("empty_output")
+        existing = self.find_by_hash(text_hash(raw_text))
+        if existing is not None:
+            if _duplicate_of is not None:
+                _duplicate_of.append(existing.output_id)
+            return existing
         if primary_clank_id != "fleet-wide":
             self.registry.require(primary_clank_id)
         for rid in related_clank_ids or []:

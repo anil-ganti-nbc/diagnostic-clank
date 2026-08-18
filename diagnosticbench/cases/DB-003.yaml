@@ -1,0 +1,34 @@
+case_id: DB-003
+title: BANKAI benchmark — 0/50 qualifying-story recall
+affected_clank: oem-radar
+period: unknown exact; referenced in programme history
+incident_family: source_gap_recall
+evidence_status: HISTORICAL_L_INCOMPLETE_EVIDENCE
+confidence: medium
+raw_evidence_requirements:
+  - kind: agent_report
+    source_agent: unknown
+    must_preserve_verbatim: true
+    notes: Full BANKAI report body required before elevating confidence; not present as complete fixture in this staging set
+expected:
+  classification: [SOURCE_GAP, INTELLIGENCE_FAILURE]
+  status: OPEN
+  root_cause: UNKNOWN
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  resolution_linked: false
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-003-c1
+    text: "OEM Radar collectors healthy implies newsroom-useful recall"
+    authority_domain: agent_assertion
+    expected_fate: disputed
+lesson: "Operational healthy + intelligence poor is a valid dual-plane state. Green collectors ≠ qualifying-story recall."
+clankops_consequence: "Intelligence health metrics and gold-set recall must not be collapsed into operational health."
+unresolved_questions:
+  - Exact date and full BANKAI report text
+  - Which 50 stories and which sources were in scope
+  - Whether any later remediation closed the gap
+sources_surveyed:
+  - Programme references in ClankOps planning (incomplete primary evidence in this environment)

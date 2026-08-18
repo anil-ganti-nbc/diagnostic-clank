@@ -405,6 +405,9 @@ class ReportIngestionStore:
         return [label for label in labels if label in upper]
 
     def _field(self, block: str, name: str) -> str | None:
+        if name == "BLAME / CONTRIBUTION":
+            match = re.search(rf"(?ms)^{re.escape(name)}:\s*\n(.+?)(?=\n\n|\n-{{10,}}|\Z)", block)
+            return match.group(1).strip() if match else None
         match = re.search(
             rf"(?ms)^{re.escape(name)}:\s*\n(.+?)(?=\n[A-Z][A-Z /_-]+:\s*|\n-{{10,}}|\Z)", block
         )

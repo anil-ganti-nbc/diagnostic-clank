@@ -52,6 +52,20 @@ def test_custom_report_root_and_data_dir(isolated):
     assert Path(summary["DIAGNOSTIC_DATA_DIR"]).exists()
 
 
+def test_report_root_co_locates_with_overridden_data_dir_not_platform_default(tmp_path, monkeypatch):
+    """Regression: a deployment (e.g. a container) that overrides
+    DIAGNOSTIC_DATA_DIR to a persistent bind mount must get its report
+    inbox under that same persistent location by default -- not silently
+    under the platform-default home directory, which would vanish on
+    container recreation with no error anywhere."""
+    persistent = tmp_path / "persistent-bind-mount"
+    monkeypatch.setenv("DIAGNOSTIC_DATA_DIR", str(persistent))
+    monkeypatch.delenv("CLANKOPS_REPORT_ROOT", raising=False)
+    rp = resolve_report_paths()
+    assert str(rp.root).startswith(str(persistent))
+    assert rp.root == persistent / "clankops-reports"
+
+
 def test_paths_with_spaces(tmp_path, monkeypatch):
     data = tmp_path / "app data"
     reports = tmp_path / "clank reports"

@@ -38,10 +38,17 @@ def default_state_root() -> Path:
 
 
 def default_report_root() -> Path:
-    """Default CLANKOPS report exchange root (outside Diagnostic DB)."""
-    # Prefer explicit workspace convention only via env; never hard-code usernames.
-    # Co-locate under state root by default so any host works without setup.
-    return default_state_root() / "clankops-reports"
+    """Default CLANKOPS report exchange root (outside Diagnostic DB).
+
+    Co-locates with the *resolved* state root (honoring DIAGNOSTIC_CLANK_HOME
+    / DIAGNOSTIC_DATA_DIR if either is set), not unconditionally the
+    platform default -- otherwise a container/deployment that overrides the
+    state root to a persistent bind mount would silently get a report inbox
+    under the ephemeral default instead, with no error anywhere.
+    """
+    home_value = os.environ.get("DIAGNOSTIC_CLANK_HOME") or os.environ.get("DIAGNOSTIC_DATA_DIR")
+    base = Path(home_value).expanduser().resolve() if home_value else default_state_root()
+    return base / "clankops-reports"
 
 
 def discover_repo_root() -> Path | None:

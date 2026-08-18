@@ -330,9 +330,65 @@ return false;
     return 200, _shell("incidents", inc.title, body)
 
 
-def render_reports_list(store: DiagnosticKnowledgeStore) -> str:
+def _json_list(value: object) -> list[str]:
+    try:
+        parsed = json.loads(str(value or "[]"))
+        return parsed if isinstance(parsed, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
+def _ingested_report_title(report: dict) -> str:
+    filename = report.get("filename") or ""
+    return filename or f"Report {str(report.get('report_id', ''))[:8]}"
+
+
+def _ingested_report_table(reports: list[dict]) -> str:
+    if not reports:
+        return "<div class=card><div class=empty>No API-ingested reports yet.</div></div>"
+    rows = "".join(
+        f'<tr><td><a href="/reports/{e(r["report_id"])}">{e(_ingested_report_title(r))}</a></td>'
+        f'<td>{e(r.get("source_agent"))}</td><td>{e(r.get("primary_clank_id") or "—")}</td>'
+        f'<td>{e(r.get("source_type"))}</td><td>{e(r.get("processing_revision"))}</td>'
+        f'<td>{e(r.get("created_at"))}</td></tr>'
+        for r in reports
+    )
+    return (
+        '<div class=card><p class=muted>These are immutable report records and background knowledge. '
+        'Their auto-extracted findings are not canonical incidents.</p>'
+        "<table><thead><tr><th>Report</th><th>Source</th><th>Scope</th><th>Type</th>"
+        "<th>Latest revision</th><th>Ingested</th></tr></thead><tbody>"
+        f"{rows}</tbody></table></div>"
+    )
+
+
+def _finding_table(findings: list[dict], report_id: str, revision: int) -> str:
+    if not findings:
+        return "<div class=card><div class=empty>No findings match these filters.</div></div>"
+    rows = "".join(
+        f'<tr><td><a href="/reports/{e(report_id)}/findings/{e(f["finding_id"])}">{e(f.get("historical_incident_id") or f.get("finding_id"))}</a></td>'
+        f'<td>{e(f.get("primary_clank_id") or "UNKNOWN")}</td><td>{e(f.get("title"))}</td>'
+        f'<td>{status_pill(f.get("epistemic_status") or "UNKNOWN")}</td>'
+        f'<td>{status_pill(f.get("resolution_status") or "UNKNOWN")}</td>'
+        f'<td>{e(f.get("finding_type") or "—")}</td>'
+        f'<td>{e(", ".join(_json_list(f.get("responsibility_json"))) or "—")}</td>'
+        f'<td>{status_pill(f.get("review_status") or "UNKNOWN")}</td></tr>'
+        for f in findings
+    )
+    return (
+        '<div class=card><p class=muted><b>BACKGROUND FINDINGS — AUTO_EXTRACTED</b>. '
+        'These records are not canonical incidents and have not been human-promoted.</p>'
+        '<table><thead><tr><th>Finding ID</th><th>Clank</th><th>Title</th><th>Epistemic</th>'
+        '<th>Resolution</th><th>Type</th><th>Responsibility</th><th>Review</th></tr></thead>'
+        f"<tbody>{rows}</tbody></table></div>"
+    )
+
+
+def render_reports_list(store: DiagnosticKnowledgeStore, query: str = "") -> str:
     reports = store.inbox.list(limit=500)
-    body = f"<h1>Agent Reports</h1>{_report_table(reports)}"
+    ingested = store.reports.list_reports(limit=500)
+    body = f"<h1>Reports</h1><h2>Agent Reports</h2>{_report_table(reports)}"
+    body += f"<h2>Ingested Reports / Background Knowledge</h2>{_ingested_report_table(ingested)}"
     return _shell("reports", "Agent Reports", body)
 
 
@@ -406,6 +462,70 @@ def render_report_detail(
     return 200, _shell("reports", f"Report {output_id[:8]}", body)
 
 
+def render_ingested_report_detail(
+    store: DiagnosticKnowledgeStore, report_id: str, revision: int | None = None
+) -> tuple[int, str]:
+    report = store.reports.get(report_id)
+    if report is None:
+        return 404, _shell("reports", "Not found", "<div class=card>Ingested report not found.</div>")
+    latest = int(report["processing_revision"])
+    selected = revision or latest
+    if selected < 1 or selected > latest:
+        selected = latest
+    findings = store.reports.rows("report_findings", report_id, selected)
+    claims = store.reports.rows("report_claims", report_id, selected)
+    lessons = store.reports.rows("report_lessons", report_id, selected)
+    claims_text = "\n".join(str(c.get("claim_text", "")) for c in claims) or "None"
+    lessons_text = "\n\n".join(str(l.get("text", "")) for l in lessons) or "None"
+    revisions = " ".join(
+        f'<a href="/reports/{e(report_id)}?revision={n}">{n}</a>'
+        if n != selected else f"<b>{n}</b>"
+        for n in range(1, latest + 1)
+    )
+    body = f"""<h1>{e(_ingested_report_title(dict(report)))}</h1>
+<p class=muted><b>BACKGROUND REPORT</b> · Auto-extracted findings remain distinct from canonical incidents.</p>
+<div class=card><div class=kv><b>Report identifier</b><span>{e(report_id)}</span></div>
+<div class=kv><b>Source agent</b><span>{e(report['source_agent'])}</span></div>
+<div class=kv><b>Report type</b><span>{e(report['source_type'])}</span></div>
+<div class=kv><b>Primary scope / Clank</b><span>{e(report['primary_clank_id'] or '—')}</span></div>
+<div class=kv><b>SHA-256</b><span>{e(report['sha256'])}</span></div>
+<div class=kv><b>Size</b><span>{e(report['byte_size'])} bytes / {e(report['text_size'])} text bytes</span></div>
+<div class=kv><b>Ingested at</b><span>{e(report['created_at'])}</span></div>
+<div class=kv><b>Latest revision</b><span>{e(latest)}</span></div>
+<div class=kv><b>Available revisions</b><span>{revisions}</span></div>
+<div class=kv><b>Selected revision</b><span>{e(selected)}</span></div>
+<div class=kv><b>Counts</b><span>{len(store.reports.rows('report_chunks', report_id, selected))} chunks · {len(findings)} findings · {len(claims)} claims · {len(lessons)} lessons</span></div>
+</div>
+<h2>Findings — revision {e(selected)}</h2>{_finding_table(findings, report_id, selected)}
+<h2>Claims — revision {e(selected)}</h2><div class=card><div class=rawbox>{e(claims_text)}</div></div>
+<h2>Lessons — revision {e(selected)}</h2><div class=card><div class=rawbox>{e(lessons_text)}</div></div>"""
+    return 200, _shell("reports", _ingested_report_title(dict(report)), body)
+
+
+def render_ingested_finding_detail(
+    store: DiagnosticKnowledgeStore, report_id: str, finding_id: str
+) -> tuple[int, str]:
+    report = store.reports.get(report_id)
+    if report is None:
+        return 404, _shell("reports", "Not found", "<div class=card>Report not found.</div>")
+    rows = store.reports.rows("report_findings", report_id, int(report["processing_revision"]))
+    finding = next((f for f in rows if f["finding_id"] == finding_id), None)
+    if finding is None:
+        return 404, _shell("reports", "Not found", "<div class=card>Finding not found.</div>")
+    fields = (
+        ("Finding ID", finding.get("finding_id")), ("Canonical incident", "NO — auto-extracted background finding"),
+        ("Clank", finding.get("primary_clank_id") or "UNKNOWN"), ("Title", finding.get("title")),
+        ("Epistemic status", finding.get("epistemic_status")), ("Resolution status", finding.get("resolution_status")),
+        ("Finding type", finding.get("finding_type")), ("Failure class", finding.get("failure_class") or "—"),
+        ("Responsibility", ", ".join(_json_list(finding.get("responsibility_json"))) or "—"),
+        ("Review status", finding.get("review_status") or "UNKNOWN"), ("Revision", finding.get("revision")),
+        ("Root cause", finding.get("root_cause") or "UNKNOWN"), ("Lesson", finding.get("lesson") or "—"),
+    )
+    rows_html = "".join(f"<div class=kv><b>{e(k)}</b><span>{e(v)}</span></div>" for k, v in fields)
+    body = f"<h1>{e(finding.get('title'))}</h1><p class=muted><b>AUTO_EXTRACTED</b> · background knowledge only; no canonical incident was created.</p><div class=card>{rows_html}</div><h2>Summary</h2><div class=card><div class=rawbox>{e(finding.get('summary') or '—')}</div></div>"
+    return 200, _shell("reports", finding.get("title") or "Finding", body)
+
+
 def render_evidence_list(store: DiagnosticKnowledgeStore) -> str:
     reports = store.inbox.list(limit=500)
     body = f"<h1>Raw Evidence</h1><p class=muted>All immutable raw evidence, inspectable without querying SQLite directly.</p>{_report_table(reports)}"
@@ -424,10 +544,27 @@ def render_search(store: DiagnosticKnowledgeStore, query: str) -> str:
             f'<tr><td><a href="/reports/{e(r.output_id)}">{e(r.output_id[:8])}</a></td><td>{e(r.agent_family.value)}</td><td>{e(r.primary_clank_id)}</td></tr>'
             for r in results["reports"]
         )
+        needle = query.casefold()
+        ingested_rows = []
+        for report in store.reports.list_reports(limit=500):
+            revision = int(report["processing_revision"])
+            for finding in store.reports.rows("report_findings", report["report_id"], revision):
+                haystack = " ".join(
+                    str(finding.get(k) or "")
+                    for k in ("finding_id", "historical_incident_id", "primary_clank_id", "title", "summary", "root_cause", "lesson", "finding_type", "review_status")
+                ).casefold()
+                if needle in haystack:
+                    ingested_rows.append(
+                        f'<tr><td><a href="/reports/{e(report["report_id"])}/findings/{e(finding["finding_id"])}">{e(finding.get("historical_incident_id") or finding["finding_id"])}</a></td>'
+                        f'<td>{e(finding.get("title"))}</td><td>{e(finding.get("primary_clank_id") or "UNKNOWN")}</td>'
+                        f'<td>{status_pill(finding.get("review_status") or "UNKNOWN")}</td></tr>'
+                    )
         results_html = f"""<h2>Incidents ({len(results["incidents"])})</h2>
 <div class=card>{f"<table><tbody>{inc_rows}</tbody></table>" if inc_rows else "<div class=empty>No matching incidents.</div>"}</div>
 <h2>Agent reports ({len(results["reports"])})</h2>
-<div class=card>{f"<table><tbody>{rep_rows}</tbody></table>" if rep_rows else "<div class=empty>No matching reports.</div>"}</div>"""
+<div class=card>{f"<table><tbody>{rep_rows}</tbody></table>" if rep_rows else "<div class=empty>No matching reports.</div>"}</div>
+<h2>Background report findings ({len(ingested_rows)})</h2>
+<div class=card>{f"<table><thead><tr><th>Finding</th><th>Title</th><th>Clank</th><th>Review</th></tr></thead><tbody>{''.join(ingested_rows)}</tbody></table>" if ingested_rows else "<div class=empty>No matching background findings.</div>"}</div>"""
     body = f'''<h1>Search</h1>
 <form method=get class=card style="display:flex;gap:10px"><input type=text name=q value="{e(query)}" placeholder="title, clank, agent, classification, raw report text, root cause, resolution, lessons..."><button>Search</button></form>
 {results_html}'''
@@ -612,8 +749,21 @@ def serve(
                 self._html(200, render_file_inbox(store))
                 return
             if path == "/reports":
-                self._html(200, render_reports_list(store))
+                self._html(200, render_reports_list(store, qs.get("q", [""])[0]))
                 return
+            if path.startswith("/reports/") and "/findings/" in path:
+                report_id, finding_id = path.split("/reports/", 1)[1].split("/findings/", 1)
+                status, body = render_ingested_finding_detail(store, report_id, finding_id)
+                self._html(status, body)
+                return
+            if path.startswith("/reports/"):
+                report_id = path.rsplit("/", 1)[1]
+                if store.reports.get(report_id) is not None:
+                    revision = qs.get("revision", [None])[0]
+                    selected = int(revision) if revision and revision.isdigit() else None
+                    status, body = render_ingested_report_detail(store, report_id, selected)
+                    self._html(status, body)
+                    return
             if path.startswith("/reports/"):
                 output_id = path.rsplit("/", 1)[1]
                 status, body = render_report_detail(store, output_id)

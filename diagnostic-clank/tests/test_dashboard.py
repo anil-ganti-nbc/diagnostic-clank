@@ -146,6 +146,66 @@ def test_incident_visible_after_creation(running_server):
     assert "Visible incident test" in body
 
 
+def test_newest_canonical_incident_is_in_overview_and_search(running_server):
+    port, _, _ = running_server
+    _post(port, "/incidents", {
+        "clank_id": "watch-clank", "title": "Newest Watch Clank canonical incident",
+        "classification": ["STALE_DISCOVERY"],
+    })
+    _, overview = _get(port, "/")
+    _, incidents = _get(port, "/incidents?clank=watch-clank")
+    _, search = _get(port, "/search?q=Newest+Watch+Clank+canonical+incident")
+    assert "Incidents</div><b>1</b>" in overview
+    assert "Newest Watch Clank canonical incident" in overview
+    assert "Newest Watch Clank canonical incident" in incidents
+    assert "Newest Watch Clank canonical incident" in search
+
+
+def test_report_findings_are_background_and_individually_visible(running_server):
+    port, _, store = running_server
+    raw = """# SECTION A — WATCH CLANK
+
+----------
+L-CANDIDATE-001 — Candidate watch finding
+
+STATUS:
+OPEN
+
+CLANK:
+Watch Clank (canonical clank id: watch-clank)
+
+EPISTEMIC STATUS:
+CANDIDATE / PROVENANCE REQUIRED
+
+LESSON:
+Keep this background finding separate from canonical incidents.
+"""
+    first = store.reports.ingest_bytes(
+        raw.encode(), source_agent="IMPORT", source_type="HISTORICAL_REGISTER",
+        filename="historical-register-test.md", primary_clank_id="watch-clank",
+    )
+    second = store.reports.ingest_bytes(
+        raw.encode(), source_agent="IMPORT", source_type="HISTORICAL_REGISTER",
+        filename="historical-register-test.md", primary_clank_id="watch-clank",
+    )
+    report_id = first["report_id"]
+    finding_id = f"{report_id}:1:L-CANDIDATE-001"
+    assert second["status"] == "duplicate"
+    assert len(store.incidents.list(limit=100)) == 0
+    _, overview = _get(port, "/")
+    _, reports = _get(port, "/reports")
+    _, detail = _get(port, f"/reports/{report_id}")
+    _, finding = _get(port, f"/reports/{report_id}/findings/{finding_id}")
+    _, search = _get(port, "/search?q=L-CANDIDATE-001")
+    assert "Incidents</div><b>0</b>" in overview
+    assert "Ingested Reports / Background Knowledge" in reports
+    assert "Candidate watch finding" in detail
+    assert "AUTO_EXTRACTED" in finding
+    assert "CANDIDATE / PROVENANCE REQUIRED" in finding
+    assert "canonical incident was created" in finding
+    assert "L-CANDIDATE-001" in search
+
+
 # -- Import report ---------------------------------------------------------------
 
 def test_import_report_preserves_raw_text_verbatim(running_server):

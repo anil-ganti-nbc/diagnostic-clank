@@ -199,10 +199,15 @@ def render_incident_detail(store: DiagnosticKnowledgeStore, incident_id: str) ->
     if inc is None:
         return 404, _shell("incidents", "Not found", "<div class=card>Incident not found.</div>")
     claims = store.incidents.claims_for(incident_id)
+    def claim_action(c) -> str:
+        if c.superseded_by:
+            return f"→ superseded by <a href=#claim-{e(c.superseded_by)}>{e(c.superseded_by[:8])}</a>"
+        safe_text = e(c.text[:60]).replace("'", "`")
+        return f'<a href="#" onclick="return supersede(\'{e(c.claim_id)}\',\'{safe_text}\')">Supersede this</a>'
     claim_rows = "".join(
         f'<tr id="claim-{e(c.claim_id)}"><td>{status_pill(c.status.value)}</td><td>{e(c.text)}</td><td>{e(c.source)}</td>'
         f'<td>{e(c.created_at.strftime("%Y-%m-%d %H:%M"))}</td>'
-        f'<td>{f"→ superseded by <a href=#claim-{e(c.superseded_by)}>{e(c.superseded_by[:8])}</a>" if c.superseded_by else f'<a href="#" onclick="return supersede(\'{e(c.claim_id)}\',\'{e(c.text[:60]).replace(chr(39), chr(96))}\')">Supersede this</a>'}</td></tr>'
+        f'<td>{claim_action(c)}</td></tr>'
         for c in claims
     )
     evidence_rows = "".join(
@@ -447,6 +452,23 @@ def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HT
             if path == "/healthz":
                 self._json(200, {"application": "DiagnosticClank", "status": "ok", "db": str(store.db_path)})
                 return
+            if path == "/api/v1/reports":
+                self._json(200, {"reports": store.reports.list_reports()}); return
+            if path.startswith("/api/v1/reports/"):
+                parts = path.split("/")
+                report_id = parts[4] if len(parts) > 4 else ""
+                report = store.reports.get(report_id)
+                if report is None:
+                    self._json(404, {"error": "unknown_report"}); return
+                if len(parts) == 5:
+                    self._json(200, dict(report)); return
+                suffix = parts[5]
+                table = {"chunks": "report_chunks", "claims": "report_claims", "incidents": "report_findings", "lessons": "report_lessons"}.get(suffix)
+                if table:
+                    self._json(200, {suffix: store.reports.rows(table, report_id)}); return
+                if suffix == "status":
+                    self._json(200, {k: report[k] for k in ("report_id", "ingestion_status", "processing_revision", "byte_size", "text_size", "warnings_json")}); return
+                self._json(404, {"error": "unknown_report_resource"}); return
             if path == "/":
                 self._html(200, render_overview(store)); return
             if path == "/incidents/new":
@@ -517,6 +539,28 @@ def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HT
             path = parsed.path
             content_type = self.headers.get("Content-Type", "")
             try:
+                if path in ("/api/v1/reports", "/api/v1/reports/upload"):
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if length <= 0:
+                        self._json(400, {"error": "content_length_required"}); return
+                    body = self.rfile.read(length)
+                    content_type = self.headers.get("Content-Type", "text/plain")
+                    if content_type.startswith("application/json"):
+                        payload = json.loads(body.decode("utf-8"))
+                        body = payload.get("raw_text", "").encode("utf-8")
+                        if not body:
+                            self._json(400, {"error": "raw_text_required"}); return
+                    result = store.reports.ingest_bytes(
+                        body,
+                        source_agent=self.headers.get("X-Source-Agent", "IMPORT"),
+                        source_type=self.headers.get("X-Source-Type", "text"),
+                        filename=self.headers.get("X-Filename"),
+                        mime_type=content_type,
+                        primary_clank_id=self.headers.get("X-Primary-Clank"),
+                        source_context=self.headers.get("X-Source-Context"),
+                        operator_note=self.headers.get("X-Operator-Note"),
+                    )
+                    self._json(200 if result.get("status") == "duplicate" else 201, result); return
                 if path == "/incidents":
                     form = self._read_form()
                     inc = store.incidents.create(

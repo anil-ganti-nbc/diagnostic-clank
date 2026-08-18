@@ -305,7 +305,7 @@ class ReportIngestionStore:
             title = title.strip()
             source_chunks = [c[0] for c in chunks if c[4] > match.start() and c[3] < end]
             section = self._section_context(text, match.start())
-            primary = self._map_clank(f"{section}\n{block}")
+            primary = self._map_clank(section) or self._map_clank(block) or "UNKNOWN"
             status = self._resolution(block)
             failure = next(
                 (
@@ -351,7 +351,7 @@ class ReportIngestionStore:
             )
         return out
 
-    def _map_clank(self, block: str) -> str:
+    def _map_clank(self, block: str) -> str | None:
         low = block.lower()
         normalized = re.sub(r"[^a-z0-9]+", " ", low)
         for registration in self.registry.list_all():

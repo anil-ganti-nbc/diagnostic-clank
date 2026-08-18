@@ -73,6 +73,35 @@ def test_entrypoint_binds_configured_host_and_port_and_shuts_down_cleanly(tmp_pa
             proc.wait(timeout=5)
 
 
+def test_entrypoint_honors_diagnostic_data_dir_env_var(tmp_path):
+    """Regression: the Dockerfile sets DIAGNOSTIC_DATA_DIR (not some other
+    name) to route state to the bind-mounted volume. A typo'd env var name
+    here silently falls back to the container's home directory instead of
+    the persistent mount -- state would then vanish on container recreation
+    with no error at all. Assert the /healthz db path actually lands under
+    the directory this env var names."""
+    data_dir = tmp_path / "bind-mounted-data"
+    port = _free_port()
+    env = dict(os.environ)
+    env["DIAGNOSTIC_DATA_DIR"] = str(data_dir)
+    env.pop("DIAGNOSTIC_CLANK_HOME", None)
+    env["DIAGNOSTIC_CLANK_BIND_HOST"] = "127.0.0.1"
+    env["DIAGNOSTIC_CLANK_PORT"] = str(port)
+    env["PYTHONPATH"] = f"{RUNTIME_PATH}:{REPO_ROOT / 'src'}"
+    proc = subprocess.Popen([sys.executable, str(ENTRYPOINT)], env=env)
+    try:
+        assert _wait_for_healthz(port)
+        with urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=3) as resp:
+            body = json.loads(resp.read())
+            assert body["db"].startswith(str(data_dir))
+    finally:
+        proc.send_signal(signal.SIGTERM)
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+
+
 def test_entrypoint_defaults_to_loopback_bind_when_unset(tmp_path):
     """Fails safe (unreachable), not fails open, if a deployment forgets to
     set DIAGNOSTIC_CLANK_BIND_HOST."""

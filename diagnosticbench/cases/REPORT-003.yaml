@@ -1,0 +1,5 @@
+case_id: REPORT-003
+title: report contradicts earlier claim
+expected:
+  both_reports_preserved: true
+  claims_not_silently_merged: true

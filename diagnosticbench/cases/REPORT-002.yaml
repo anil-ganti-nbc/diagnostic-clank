@@ -1,0 +1,5 @@
+case_id: REPORT-002
+title: exact duplicate report bytes
+expected:
+  no_duplicate_canonical_evidence: true
+  second_status: duplicate

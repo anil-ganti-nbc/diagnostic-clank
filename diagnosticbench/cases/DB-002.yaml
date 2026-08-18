@@ -1,0 +1,42 @@
+case_id: DB-002
+title: Baseline events must never masquerade as fresh alerts
+affected_clank: oem-radar
+period: "Stage 11 era"
+incident_family: baseline_novelty
+evidence_status: CONFIRMED_L_CONFIRMED_FIX
+confidence: high
+raw_evidence_requirements:
+  - kind: audit_excerpt
+    source_agent: system
+    must_preserve_verbatim: true
+    notes: CROSS_CLANK_LESSONS LESSON 3; FAILURE_TAXONOMY BASELINE_POLLUTION
+expected:
+  classification: [BASELINE_POLLUTION, NOVELTY_FAILURE]
+  status: RESOLVED
+  root_cause: "First-crawl / baseline entities emitted as ordinary novelty alerts."
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  preserves_superseding_claim: true
+  resolution_linked: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-002-c1
+    text: "First time Clank sees product X means X is new to market"
+    authority_domain: agent_assertion
+    expected_fate: superseded
+fix: "EXCLUDE_BASELINE_EVENTS_SQL + meta baseline flag; dashboard/analytics respect it (oem-radar Stage 11)."
+lesson: "FIRST_SEEN_BY_CLANK ≠ NEW_TO_MARKET. Better eyes require rebaselining before novelty authority."
+clankops_consequence: "Source expansion sessions must run under BASELINING / delivery-suppressed authority."
+relationships:
+  - type: EXPLICIT
+    related_case_id: DB-008
+    note: Watch stale discovery is novelty/freshness cousin
+search_should_find:
+  - query: "baseline pollution"
+    must_include_case: true
+  - query: "first seen not new"
+    must_include_case: true
+sources_surveyed:
+  - artifacts/clank-audit/CROSS_CLANK_LESSONS.md LESSON 3
+  - artifacts/clank-audit/FAILURE_TAXONOMY.md BASELINE_POLLUTION

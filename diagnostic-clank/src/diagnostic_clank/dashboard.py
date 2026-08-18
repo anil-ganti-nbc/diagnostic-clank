@@ -92,7 +92,7 @@ button.secondary{background:#233047}
 
 def _nav(active: str) -> str:
     items = [("overview", "/", "Overview"), ("incidents", "/incidents", "Incidents"),
-             ("reports", "/reports", "Agent Reports"), ("evidence", "/evidence", "Raw Evidence"),
+             ("reports", "/reports", "Agent Reports"), ("file-inbox", "/file-inbox", "File Inbox"), ("evidence", "/evidence", "Raw Evidence"),
              ("search", "/search", "Search")]
     links = "".join(f'<a class="nav{" active" if k == active else ""}" href="{href}">{label}</a>' for k, href, label in items)
     return (f'{links}<div style="height:1px;background:#233047;margin:10px 0"></div>'
@@ -367,6 +367,53 @@ def render_ingest_landing() -> str:
 # server
 # ---------------------------------------------------------------------------
 
+
+def render_file_inbox(store: DiagnosticKnowledgeStore, scan_summary: str = "") -> str:
+    from diagnostic_clank.paths import resolve_report_paths
+    rp = resolve_report_paths()
+    def _list(dir_path, limit=50):
+        if not dir_path.is_dir():
+            return []
+        files = sorted(
+            [f for f in dir_path.iterdir() if f.is_file() and not f.name.endswith(".reason.txt")],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        return files[:limit]
+    inbox_files = _list(rp.inbox)
+    processed_files = _list(rp.processed)
+    quarantined = _list(rp.quarantine)
+    def rows(files, empty):
+        if not files:
+            return f'<div class=empty>{empty}</div>'
+        body = "".join(
+            f"<tr><td>{e(f.name)}</td><td class=muted>{e(f.stat().st_size)} B</td></tr>"
+            for f in files
+        )
+        return f"<table><tr><th>File</th><th>Size</th></tr>{body}</table>"
+    summary_html = f'<div class=card>{e(scan_summary)}</div>' if scan_summary else ""
+    body = (
+        f'<h1>File Inbox</h1>'
+        f'<p class=muted>Logical root: <code>CLANKOPS_REPORT_ROOT</code> resolved to '
+        f'<code>{e(rp.root)}</code></p>'
+        f'{summary_html}'
+        f'<form method=post action="/file-inbox/scan" class=card>'
+        f'<button type=submit>Scan inbox now</button> '
+        f'<span class=muted>Preserves raw evidence by content hash; moves to processed/ or quarantine/</span>'
+        f'</form>'
+        f'<div class=grid4>'
+        f'<div class=stat><div class=muted>Inbox</div><b>{len(inbox_files)}</b></div>'
+        f'<div class=stat><div class=muted>Processed</div><b>{len(processed_files)}</b></div>'
+        f'<div class=stat><div class=muted>Quarantine</div><b>{len(quarantined)}</b></div>'
+        f'<div class=stat><div class=muted>Agent reports (DB)</div><b>{len(store.inbox.list(limit=100000))}</b></div>'
+        f'</div>'
+        f'<h2>Inbox</h2><div class=card>{rows(inbox_files, "Empty")}</div>'
+        f'<h2>Processed</h2><div class=card>{rows(processed_files, "None yet")}</div>'
+        f'<h2>Quarantine</h2><div class=card>{rows(quarantined, "None")}</div>'
+    )
+    return _shell("file-inbox", "File Inbox", body)
+
+
 def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HTTPServer, DiagnosticKnowledgeStore]:
     registry = build_registry()
     store = DiagnosticKnowledgeStore(paths.db_path, paths.evidence_dir, paths.quarantine_dir, registry)
@@ -412,6 +459,8 @@ def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HT
                 self._html(status, body); return
             if path == "/reports/new":
                 self._html(200, render_report_new_form()); return
+            if path == "/file-inbox":
+                self._html(200, render_file_inbox(store)); return
             if path == "/reports":
                 self._html(200, render_reports_list(store)); return
             if path.startswith("/reports/"):

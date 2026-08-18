@@ -1,0 +1,26 @@
+case_id: DB-009
+title: Feature Phone blocked_zero_result invariant
+affected_clank: feature-phone-clank
+incident_family: catalogue_health
+evidence_status: CONFIRMED_L_CONFIRMED_FIX
+confidence: high
+raw_evidence_requirements:
+  - kind: audit_excerpt
+    source_agent: system
+    notes: CROSS_CLANK_LESSONS; test_catastrophic_zero.py
+expected:
+  classification: [CATALOGUE_COLLAPSE]
+  status: RESOLVED
+  root_cause: "Catastrophic zero must not flow as normal empty success."
+  root_cause_must_not_be_invented: true
+  resolution_linked: true
+  lesson_linked: true
+  provenance_required: true
+fix: "blocked_zero_result status; pipeline never called on blocked/failed runs; dedicated tests."
+lesson: "Absence counters advance only on healthy runs."
+relationships:
+  - type: EXPLICIT
+    related_case_id: DB-001
+sources_surveyed:
+  - artifacts/clank-audit/CROSS_CLANK_LESSONS.md
+  - artifacts/clank-audit/FAILURE_TAXONOMY.md

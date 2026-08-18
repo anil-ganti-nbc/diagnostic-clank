@@ -1,0 +1,49 @@
+case_id: DB-004
+title: DSM scheduler first successful fire does not prove hourly recurrence
+affected_clank: oem-radar
+period: "2026-08 NAS canary"
+incident_family: scheduler_verification
+evidence_status: CONFIRMED_L_PARTIAL_FIX
+confidence: high
+raw_evidence_requirements:
+  - kind: owner_note
+    source_agent: owner
+    must_preserve_verbatim: true
+    notes: Reboot-validation / within-day recurrence option not enabled
+  - kind: agent_report
+    source_agent: grok
+    must_preserve_verbatim: true
+    notes: Initial claim that first scheduler firing proved hourly cadence
+expected:
+  classification: [SCHEDULER_CONFIGURATION_FAILURE, VERIFICATION_FAILURE]
+  status: PARTIAL
+  root_cause: "Task appeared to run on schedule once; within-day recurrence was not actually configured. First execution ≠ cadence proof."
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  preserves_superseding_claim: true
+  preserves_contradiction: true
+  resolution_linked: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-004-c1
+    text: "First scheduler firing at :35 proved hourly cadence"
+    authority_domain: agent_assertion
+    expected_fate: superseded
+  - id: DB-004-c2
+    text: "DSM task was once-daily; within-day recurrence option had not been enabled"
+    authority_domain: owner_observation
+    expected_fate: retained
+fix: "Document verification checklist for DSM recurrence; do not treat single fire as cadence proof."
+lesson: "Successful first execution does not prove recurrence configuration."
+clankops_consequence: "Scheduler acceptance requires multi-interval observation or explicit UI confirmation of recurrence fields."
+search_should_find:
+  - query: "DSM recurrence"
+    must_include_case: true
+  - query: "scheduler firing proved"
+    must_include_case: true
+unresolved_questions:
+  - Whether final NAS production cutover completed recurrence verification
+sources_surveyed:
+  - OEM Radar NAS canary conversation record (2026-08-16)
+  - Owner correction on reboot-validation audit semantics

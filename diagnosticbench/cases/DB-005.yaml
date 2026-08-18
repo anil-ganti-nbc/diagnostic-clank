@@ -1,0 +1,34 @@
+case_id: DB-005
+title: NAS canary dual-host period — delivery must not double-fire
+affected_clank: oem-radar
+period: "2026-08-16"
+incident_family: delivery_safety
+evidence_status: CONFIRMED_L_PARTIAL_FIX
+confidence: high
+raw_evidence_requirements:
+  - kind: agent_report
+    source_agent: grok
+    must_preserve_verbatim: true
+    notes: Canary classification — Discord not configured on NAS; pending queue only
+expected:
+  classification: [DELIVERY_POLICY, DUAL_HOST_SAFETY]
+  status: PARTIAL
+  root_cause: "During dual-host (Hetzner + NAS) period, configuring Discord on both hosts would risk duplicate editorial delivery."
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  resolution_linked: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-005-c1
+    text: "NAS canary READY FOR REBOOT VALIDATION; delivery pending only; Hetzner unmodified"
+    authority_domain: agent_assertion
+    expected_fate: retained
+fix: "No Discord webhook on NAS during canary; notifications queued pending."
+lesson: "Single notification authority during migration. Collect without delivery authority is a first-class state."
+clankops_consequence: "Cutover runbook must name the sole delivery authority host."
+search_should_find:
+  - query: "READY FOR REBOOT VALIDATION"
+    must_include_case: true
+sources_surveyed:
+  - OEM Radar NAS canary final classification report

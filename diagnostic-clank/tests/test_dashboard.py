@@ -54,8 +54,13 @@ def _post(port: int, path: str, data: dict) -> tuple[int, str]:
 # -- state path / CWD independence -------------------------------------------
 
 def test_state_root_defaults_to_application_support():
+    import sys
     root = default_state_root()
-    assert "Library/Application Support/Diagnostic Clank" in str(root)
+    if sys.platform == "darwin":
+        assert "Library/Application Support/Diagnostic Clank" in str(root)
+    else:
+        # Linux/Windows: platform default under home or XDG/LOCALAPPDATA
+        assert root.is_absolute()
 
 
 def test_server_binds_only_loopback(running_server):
@@ -89,7 +94,7 @@ def test_dashboard_works_regardless_of_process_cwd(tmp_path, monkeypatch):
 
 # -- routes --------------------------------------------------------------------
 
-@pytest.mark.parametrize("path", ["/", "/incidents", "/incidents/new", "/reports", "/reports/new", "/evidence", "/search", "/ingest"])
+@pytest.mark.parametrize("path", ["/", "/incidents", "/incidents/new", "/reports", "/reports/new", "/file-inbox", "/evidence", "/search", "/ingest"])
 def test_all_nav_routes_return_200(running_server, path):
     port, _, _ = running_server
     status, _ = _get(port, path)

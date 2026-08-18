@@ -1,0 +1,55 @@
+case_id: DB-001
+title: Unexpected zero / catalogue collapse must be failure not success
+affected_clank: oem-radar
+related_clanks: [feature-phone-clank, smartwatch-clank]
+period: "2026 audit / continuous"
+incident_family: catalogue_health
+evidence_status: CONFIRMED_L_CONFIRMED_FIX
+confidence: high
+raw_evidence_requirements:
+  - kind: audit_excerpt
+    source_agent: system
+    must_preserve_verbatim: true
+    notes: Great Audit CROSS_CLANK_LESSONS LESSON 1; FAILURE_TAXONOMY CATALOGUE_COLLAPSE
+  - kind: test_result
+    source_agent: system
+    notes: oem-radar CollectorHealthConfig thresholds; feature-phone test_catastrophic_zero
+expected:
+  classification: [CATALOGUE_COLLAPSE, OBSERVABILITY_FAILURE]
+  status: RESOLVED
+  root_cause: "Failed or zero-result runs were allowed to advance healthy baseline / be scored success in weaker Clanks; oem-radar and peers now treat unexpected zero as failure."
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  preserves_superseding_claim: true
+  preserves_contradiction: true
+  resolution_linked: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-001-c1
+    text: "Zero items observed means healthy empty catalogue"
+    authority_domain: agent_assertion
+    expected_fate: superseded
+  - id: DB-001-c2
+    text: "Unexpected zero is a failure condition; do not update successful baseline"
+    authority_domain: automated_test
+    expected_fate: retained
+fix: "Health thresholds + early return; failed runs do not update successful baseline (oem-radar); blocked_zero_result (feature-phone); unexpected_zero_is_failure (smartwatch)."
+lesson: "MUST for any Clank that maintains product presence state. Healthy-run-only advancement of absence counters."
+clankops_consequence: "Fleet health displays must not green-light ZERO_ITEMS without Clank-declared semantics."
+relationships:
+  - type: EXPLICIT
+    related_case_id: DB-009
+    note: feature-phone blocked_zero_result is sibling protection
+  - type: EXPLICIT
+    related_case_id: DB-013
+    note: smartwatch unexpected_zero_is_failure
+search_should_find:
+  - query: "unexpected zero"
+    must_include_case: true
+  - query: "catalogue collapse"
+    must_include_case: true
+unresolved_questions: []
+sources_surveyed:
+  - artifacts/clank-audit/CROSS_CLANK_LESSONS.md LESSON 1
+  - artifacts/clank-audit/FAILURE_TAXONOMY.md CATALOGUE_COLLAPSE

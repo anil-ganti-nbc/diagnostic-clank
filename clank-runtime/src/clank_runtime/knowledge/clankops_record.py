@@ -13,7 +13,7 @@ import re
 from pydantic import BaseModel, ConfigDict
 
 FIELD_NAMES = (
-    "agent", "project", "task", "timestamp", "repo", "branch", "start_sha", "end_sha",
+    "schema_version", "agent", "project", "task", "timestamp", "repo", "branch", "start_sha", "end_sha",
     "pr", "hosts_read", "hosts_modified", "tests", "p0", "p1", "p2", "p3",
     "decisions", "unresolved", "next_action", "verdict",
 )
@@ -27,6 +27,7 @@ _FIELD_LINE = re.compile(
 
 class CLANKOPSRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    schema_version: str | None = None
     agent: str | None = None
     project: str | None = None
     task: str | None = None

@@ -1,0 +1,33 @@
+case_id: DB-008
+title: Stale/historical Watch discovery surfaced as current novelty
+affected_clank: watch-clank
+period: multi
+incident_family: freshness_novelty
+evidence_status: CONFIRMED_L_PARTIAL_FIX
+confidence: medium
+raw_evidence_requirements:
+  - kind: audit_excerpt
+    source_agent: system
+    notes: FIRST_SEEN ≠ NEW; CasioBlog/Timex class lessons in programme history
+expected:
+  classification: [FRESHNESS_FAILURE, NOVELTY_FAILURE, HISTORICAL_DISCOVERY]
+  status: PARTIAL
+  root_cause: "Old editorial/product evidence first seen by Clank treated as current alert-worthy novelty."
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-008-c1
+    text: "First seen URL today means recently published"
+    authority_domain: agent_assertion
+    expected_fate: superseded
+lesson: "OLD_FIRST_SEEN_URL_NOT_FRESH. published_at and first_seen_at are independent."
+clankops_consequence: "Freshness firewall required before newsroom delivery authority."
+relationships:
+  - type: EXPLICIT
+    related_case_id: DB-002
+    note: baseline pollution is the catalogue-side twin
+sources_surveyed:
+  - Motherclank / Unified central laws
+  - Watch programme failure references (Timex, CasioBlog)

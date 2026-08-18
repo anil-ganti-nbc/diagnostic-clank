@@ -1,0 +1,7 @@
+case_id: REPORT-001
+title: valid agent report with CLANKOPS_RECORD
+expected:
+  raw_preserved: true
+  metadata_parsed: true
+  provenance_retained: true
+  status: ingested

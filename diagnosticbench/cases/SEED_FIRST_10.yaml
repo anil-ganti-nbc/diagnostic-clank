@@ -1,0 +1,129 @@
+# First 10 seed cases — semantic expectations only
+# confidence: confirmed | partial | open | incomplete_evidence | suspected
+
+- case_id: L-OEM-001
+  affected_clank: oem-radar
+  period: "2026-08"
+  title: "DSM scheduler recurrence misread after first natural fire"
+  confidence: confirmed
+  status_expected: resolved
+  classification_expected: [SCHEDULER_FAILURE, VERIFICATION_FAILURE]
+  claims:
+    - text: "First scheduler firing proved hourly cadence"
+      authority_domain: agent_report
+      expected_fate: superseded
+    - text: "Task was actually once-daily; within-day recurrence never enabled"
+      authority_domain: owner_observation
+      expected_fate: retained
+  root_cause_expected: "Recurrence option not enabled; first fire ≠ cadence proof"
+  lesson_expected: "Successful first execution does not prove recurrence configuration"
+  clankops_consequence_expected: "Natural schedule verification must assert cadence, not only first fire"
+  search_queries:
+    - "OEM Radar scheduler recurrence"
+    - "DSM within-day recurrence"
+
+- case_id: L-OEM-002
+  affected_clank: oem-radar
+  period: "2026-08"
+  title: "NAS canary dual-host delivery safety (pending queue, no Discord on NAS)"
+  confidence: confirmed
+  status_expected: resolved
+  classification_expected: [DELIVERY_POLICY, DEPLOYMENT_GATE]
+  root_cause_expected: "N/A — preventive correct behaviour during dual-host"
+  lesson_expected: "Canary must not double-deliver while Hetzner still authoritative"
+  clankops_consequence_expected: "Delivery authority explicit per host before cutover"
+  search_queries: ["OEM Radar NAS canary", "pending notifications NAS"]
+
+- case_id: L-OEM-003
+  affected_clank: oem-radar
+  period: UNKNOWN
+  title: "BANKAI / qualifying-story recall gap (0/50 class failure)"
+  confidence: partial
+  status_expected: open
+  classification_expected: [SOURCE_GAP, INTELLIGENCE_FAILURE]
+  root_cause_expected: UNKNOWN
+  lesson_expected: "Operational collector health ≠ newsroom recall"
+  clankops_consequence_expected: "Intelligence health separate from operational health"
+  search_queries: ["OEM Radar BANKAI", "qualifying-story recall"]
+
+- case_id: L-OEM-004
+  affected_clank: oem-radar
+  period: UNKNOWN
+  title: "Beelink ME Pro HX 470 miss"
+  confidence: incomplete_evidence
+  status_expected: open
+  classification_expected: [SOURCE_GAP, REGION_GAP]
+  root_cause_expected: UNKNOWN
+  notes: "Do not invent parser failure without evidence of exposure"
+  search_queries: ["Beelink ME Pro HX 470", "OEM Radar miss Beelink"]
+
+- case_id: L-WATCH-001
+  affected_clank: watch-clank
+  period: UNKNOWN
+  title: "SQLite shared-writer contention under timer fan-out"
+  confidence: confirmed
+  status_expected: resolved
+  classification_expected: [INFRASTRUCTURE_FAILURE, CONTENTION]
+  root_cause_expected: "Shared SQLite writer under concurrent timer-driven sources"
+  fix_expected: "busy_timeout configured to 60 seconds (and related contention handling)"
+  lesson_expected: "Per-source locking does not eliminate shared DB writer contention"
+  clankops_consequence_expected: "Timer fan-out requires explicit contention validation before deploy"
+  search_queries: ["Watch SQLite busy timeout", "timer fan-out"]
+
+- case_id: L-WATCH-002
+  affected_clank: watch-clank
+  period: UNKNOWN
+  title: "Stale/antique article treated as current novelty"
+  confidence: confirmed
+  status_expected: partial
+  classification_expected: [FRESHNESS_FAILURE, NOVELTY_FAILURE]
+  root_cause_expected: "first_seen / discovery treated as market novelty without temporal firewall"
+  lesson_expected: "FIRST_SEEN_BY_CLANK ≠ NEW_TO_MARKET; old first_seen URL ≠ fresh"
+  clankops_consequence_expected: "Baseline/historical firewall before novelty authority"
+  search_queries: ["Watch stale discovery", "CasioBlog historical"]
+
+- case_id: L-FGT-001
+  affected_clank: free-game-tracker
+  period: UNKNOWN
+  title: "Helldivers 2 PS Plus catalogue miss"
+  confidence: partial
+  status_expected: partial
+  classification_expected: [SOURCE_GAP, PATH_FAILURE]
+  root_cause_expected: UNKNOWN  # subscription-path remediation exists; confirm boundary from evidence
+  lesson_expected: "Catalogue path ≠ subscription entitlement path"
+  search_queries: ["Helldivers 2 PS Plus", "Free Game Tracker miss"]
+
+- case_id: L-PHONE-001
+  affected_clank: feature-phone-clank
+  period: UNKNOWN
+  title: "Stale .app / build confusion — automated pass, owner launch fail"
+  confidence: confirmed
+  status_expected: resolved
+  classification_expected: [EXECUTION_PROVENANCE, OWNER_ACCEPTANCE_FAILURE]
+  root_cause_expected: "Wrong/stale binary or launcher path vs canonical bundle"
+  lesson_expected: "BUILD_SUCCESS ≠ OWNER_FIELD_TEST_ACCEPTANCE"
+  clankops_consequence_expected: "Owner-facing launcher itself is an acceptance gate"
+  search_queries: ["Feature Phone stale app", "frozen macOS app"]
+
+- case_id: L-FLEET-001
+  affected_clank: fleet-wide
+  period: UNKNOWN
+  title: "Tablet Clank absent from local workspace enumeration"
+  confidence: confirmed
+  status_expected: resolved
+  classification_expected: [INVENTORY_FAILURE]
+  root_cause_expected: "Local directory sweep treated as canonical fleet inventory"
+  lesson_expected: "LOCAL_WORKSPACE ≠ CANONICAL_FLEET_INVENTORY"
+  clankops_consequence_expected: "Fleet membership from registry/manifest, not filesystem alone"
+  search_queries: ["Tablet Clank missing", "local workspace fleet"]
+
+- case_id: L-SMART-001
+  affected_clank: smartphone-clank
+  period: UNKNOWN
+  title: "Samsung traversal succeeds, zero valid devices extracted"
+  confidence: partial
+  status_expected: open
+  classification_expected: [EXTRACTION_FAILURE, BASELINE_AUTHORITY]
+  root_cause_expected: UNKNOWN
+  lesson_expected: "HTTP/traversal success ≠ extraction success; dual baseline authority risk"
+  search_queries: ["Smartphone Samsung zero devices", "empty local baseline"]

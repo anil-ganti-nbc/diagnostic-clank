@@ -96,6 +96,28 @@ def test_launcher_state_lives_under_application_support_style_home(tmp_path):
             proc.kill()
 
 
+def test_launcher_becomes_thin_browser_launcher_when_nas_configured(tmp_path):
+    """When a canonical NAS instance is configured, the launcher must not
+    start a second, independently-writable local server/DB -- no runtime
+    marker should ever appear, and the process should exit promptly."""
+    home = tmp_path / "dc-home-nas-configured"
+    env = dict(os.environ)
+    env["DIAGNOSTIC_CLANK_HOME"] = str(home)
+    env["DIAGNOSTIC_CLANK_NO_BROWSER"] = "1"
+    env["DIAGNOSTIC_CLANK_NAS_URL"] = "http://192.0.2.1:8420/"  # TEST-NET-1, never dialed
+    env["PYTHONPATH"] = f"{RUNTIME_PATH}:{REPO_ROOT / 'src'}"
+    proc = subprocess.Popen([sys.executable, str(LAUNCHER)], env=env)
+    try:
+        proc.wait(timeout=10)
+        assert proc.returncode == 0
+        assert not (home / "runtime" / "dashboard.json").exists()
+        assert not (home / "diagnostic.db").exists()
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait(timeout=5)
+
+
 @pytest.mark.skipif(not CENTRAL_LAUNCHER.exists(), reason="central launcher symlink not yet created on this machine")
 def test_central_launcher_is_a_symlink_not_a_copy():
     assert CENTRAL_LAUNCHER.is_symlink()

@@ -85,6 +85,36 @@ def cmd_submit(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_backup(args: argparse.Namespace) -> int:
+    from diagnostic_clank.backup import create_backup
+    from diagnostic_clank.paths import discover_repo_root, resolve_state_paths
+
+    state = resolve_state_paths(args.data_dir)
+    revision = args.revision
+    if revision is None:
+        repo = discover_repo_root()
+        if repo is not None:
+            try:
+                import subprocess
+
+                revision = subprocess.run(
+                    ["git", "rev-parse", "HEAD"], cwd=repo, capture_output=True, text=True, timeout=5
+                ).stdout.strip() or None
+            except Exception:  # noqa: BLE001 -- revision is best-effort metadata only
+                revision = None
+    manifest = create_backup(state, Path(args.dest), source_repo_revision=revision)
+    print(manifest.to_json())
+    return 0
+
+
+def cmd_restore(args: argparse.Namespace) -> int:
+    from diagnostic_clank.backup import restore_backup
+
+    dest = restore_backup(Path(args.backup_dir), Path(args.dest))
+    print(json.dumps({"restored_to": str(dest.home), "db_path": str(dest.db_path)}, indent=2))
+    return 0
+
+
 def _build_record(*, agent: str, project: str, task: str, verdict: str | None) -> str:
     ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     lines = [
@@ -138,6 +168,17 @@ def main(argv: list[str] | None = None) -> int:
     p_submit.add_argument("--append-record", action="store_true")
     p_submit.add_argument("--report-root", default=None)
     p_submit.set_defaults(func=cmd_submit)
+
+    p_backup = sub.add_parser("backup", help="Application-consistent backup of the local knowledge state")
+    p_backup.add_argument("dest", help="Destination directory for the backup (created if missing)")
+    p_backup.add_argument("--data-dir", default=None, help="Override DIAGNOSTIC_DATA_DIR")
+    p_backup.add_argument("--revision", default=None, help="Override recorded source repo revision")
+    p_backup.set_defaults(func=cmd_backup)
+
+    p_restore = sub.add_parser("restore", help="Restore a backup into an isolated destination")
+    p_restore.add_argument("backup_dir", help="Path to a backup directory produced by 'backup'")
+    p_restore.add_argument("dest", help="Isolated destination state directory (never the live data dir)")
+    p_restore.set_defaults(func=cmd_restore)
 
     args = parser.parse_args(argv)
     return int(args.func(args) or 0)

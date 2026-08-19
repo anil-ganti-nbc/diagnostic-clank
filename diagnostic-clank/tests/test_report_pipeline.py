@@ -7,6 +7,7 @@ import pytest
 
 from clank_runtime.knowledge.inbox import text_hash
 from diagnostic_clank.paths import (
+    resolve_nas_endpoint,
     resolve_report_paths,
     resolve_state_paths,
     resolved_paths_summary,
@@ -50,6 +51,41 @@ def test_custom_report_root_and_data_dir(isolated):
     summary = resolved_paths_summary()
     assert summary["CLANKOPS_REPORT_ROOT"] == str(rp.root)
     assert Path(summary["DIAGNOSTIC_DATA_DIR"]).exists()
+
+
+def test_report_root_co_locates_with_overridden_data_dir_not_platform_default(tmp_path, monkeypatch):
+    """Regression: a deployment (e.g. a container) that overrides
+    DIAGNOSTIC_DATA_DIR to a persistent bind mount must get its report
+    inbox under that same persistent location by default -- not silently
+    under the platform-default home directory, which would vanish on
+    container recreation with no error anywhere."""
+    persistent = tmp_path / "persistent-bind-mount"
+    monkeypatch.setenv("DIAGNOSTIC_DATA_DIR", str(persistent))
+    monkeypatch.delenv("CLANKOPS_REPORT_ROOT", raising=False)
+    rp = resolve_report_paths()
+    assert str(rp.root).startswith(str(persistent))
+    assert rp.root == persistent / "clankops-reports"
+
+
+def test_nas_endpoint_none_when_unconfigured(tmp_path, monkeypatch):
+    monkeypatch.setenv("DIAGNOSTIC_DATA_DIR", str(tmp_path / "home"))
+    monkeypatch.delenv("DIAGNOSTIC_CLANK_NAS_URL", raising=False)
+    assert resolve_nas_endpoint() is None
+
+
+def test_nas_endpoint_env_var_takes_precedence(tmp_path, monkeypatch):
+    monkeypatch.setenv("DIAGNOSTIC_DATA_DIR", str(tmp_path / "home"))
+    monkeypatch.setenv("DIAGNOSTIC_CLANK_NAS_URL", "http://192.0.2.1:8420/")
+    assert resolve_nas_endpoint() == "http://192.0.2.1:8420/"
+
+
+def test_nas_endpoint_reads_local_config_file(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("DIAGNOSTIC_DATA_DIR", str(home))
+    monkeypatch.delenv("DIAGNOSTIC_CLANK_NAS_URL", raising=False)
+    (home / "nas-endpoint.txt").write_text("# comment\nhttp://192.0.2.1:8420/\n")
+    assert resolve_nas_endpoint() == "http://192.0.2.1:8420/"
 
 
 def test_paths_with_spaces(tmp_path, monkeypatch):

@@ -38,10 +38,51 @@ def default_state_root() -> Path:
 
 
 def default_report_root() -> Path:
-    """Default CLANKOPS report exchange root (outside Diagnostic DB)."""
-    # Prefer explicit workspace convention only via env; never hard-code usernames.
-    # Co-locate under state root by default so any host works without setup.
-    return default_state_root() / "clankops-reports"
+    """Default CLANKOPS report exchange root (outside Diagnostic DB).
+
+    Co-locates with the *resolved* state root (honoring DIAGNOSTIC_CLANK_HOME
+    / DIAGNOSTIC_DATA_DIR if either is set), not unconditionally the
+    platform default -- otherwise a container/deployment that overrides the
+    state root to a persistent bind mount would silently get a report inbox
+    under the ephemeral default instead, with no error anywhere.
+    """
+    home_value = os.environ.get("DIAGNOSTIC_CLANK_HOME") or os.environ.get("DIAGNOSTIC_DATA_DIR")
+    base = Path(home_value).expanduser().resolve() if home_value else default_state_root()
+    return base / "clankops-reports"
+
+
+NAS_ENDPOINT_FILENAME = "nas-endpoint.txt"
+
+
+def resolve_nas_endpoint(override_home: str | Path | None = None) -> str | None:
+    """Logical canonical-instance location, resolved from deployment
+    configuration only -- never a hard-coded host/IP in source.
+
+    DIAGNOSTIC_CLANK_NAS_URL env var takes precedence; otherwise a local
+    config file (state_root/nas-endpoint.txt, first non-empty line) that an
+    owner creates once per machine after a real migration. Returns None
+    (not a guess, not a fabricated default) when neither is configured --
+    the caller decides what "no canonical instance configured" means for
+    it (e.g. the macOS launcher falls back to running its own local
+    server).
+    """
+    env_value = os.environ.get("DIAGNOSTIC_CLANK_NAS_URL")
+    if env_value and env_value.strip():
+        return env_value.strip()
+
+    home_value = (
+        override_home
+        or os.environ.get("DIAGNOSTIC_CLANK_HOME")
+        or os.environ.get("DIAGNOSTIC_DATA_DIR")
+    )
+    home = Path(home_value).expanduser().resolve() if home_value else default_state_root()
+    config_file = home / NAS_ENDPOINT_FILENAME
+    if config_file.is_file():
+        for line in config_file.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#"):
+                return stripped
+    return None
 
 
 def discover_repo_root() -> Path | None:

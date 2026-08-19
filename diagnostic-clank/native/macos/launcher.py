@@ -50,6 +50,19 @@ def main() -> None:
     if getattr(sys, "frozen", False):
         sys.path.insert(0, str(resource_root()))
 
+    from diagnostic_clank.paths import resolve_nas_endpoint
+
+    nas_url = resolve_nas_endpoint()
+    if nas_url:
+        # A canonical NAS-hosted instance is configured for this machine --
+        # this app becomes a thin browser launcher only, never starting a
+        # second, independently-writable local server/DB. Configured via
+        # DIAGNOSTIC_CLANK_NAS_URL or a local nas-endpoint.txt file, never a
+        # hard-coded host in source (see paths.resolve_nas_endpoint).
+        if os.environ.get("DIAGNOSTIC_CLANK_NO_BROWSER") != "1":
+            subprocess.Popen(["open", nas_url])
+        return
+
     from diagnostic_clank.dashboard import serve
     from diagnostic_clank.paths import resolve_state_paths
 

@@ -6,6 +6,7 @@ clank_runtime.knowledge.incidents module docstring for the laws this
 upholds. This module is the presentation layer only; all storage/history
 rules live in clank_runtime.knowledge.store.DiagnosticKnowledgeStore.
 """
+
 from __future__ import annotations
 
 import html
@@ -19,26 +20,42 @@ from urllib.parse import parse_qs, urlparse
 from clank_runtime.knowledge.attachments import AttachmentQuarantined
 from clank_runtime.knowledge.clankops_record import extract_clankops_record
 from clank_runtime.knowledge.inbox import AgentFamily, OutputType
-from clank_runtime.knowledge.incidents import ClaimVerification, IncidentClassification, IncidentStatus, RootCauseCertainty
+from clank_runtime.knowledge.incidents import (
+    ClaimVerification,
+    IncidentClassification,
+    IncidentStatus,
+    RootCauseCertainty,
+)
 from clank_runtime.knowledge.store import DiagnosticKnowledgeStore
 from clank_runtime.registry.core import ClankRegistration, ClankRegistry
 from diagnostic_clank.paths import StatePaths
+
+MAX_REPORT_UPLOAD_BYTES = 25 * 1024 * 1024  # matches MAX_ATTACHMENT_BYTES -- no unbounded read of Content-Length
 
 # Known fleet Clank ids, seeded as registry identity metadata only -- this
 # has zero side effects on any other Clank's actual state. An owner can
 # still type/select "fleet-wide" or any registered id; the registry is
 # data, not a closed source enum (see ClankRegistry docstring).
 KNOWN_CLANK_IDS = (
-    "watch-clank", "smartphone-clank", "smartwatch-clank", "feature-phone-clank",
-    "tablet-clank", "chinese-tech-wire", "korean-tech-wire", "semiconductor-intelligence",
-    "oem-radar", "free-game-tracker",
+    "watch-clank",
+    "smartphone-clank",
+    "smartwatch-clank",
+    "feature-phone-clank",
+    "tablet-clank",
+    "chinese-tech-wire",
+    "korean-tech-wire",
+    "semiconductor-intelligence",
+    "oem-radar",
+    "free-game-tracker",
 )
 
 
 def build_registry() -> ClankRegistry:
     reg = ClankRegistry()
     for cid in KNOWN_CLANK_IDS:
-        reg.register(ClankRegistration(clank_id=cid, display_name=cid.replace("-", " ").title()))
+        reg.register(
+            ClankRegistration(clank_id=cid, display_name=cid.replace("-", " ").title())
+        )
     return reg
 
 
@@ -91,21 +108,31 @@ button.secondary{background:#233047}
 
 
 def _nav(active: str) -> str:
-    items = [("overview", "/", "Overview"), ("incidents", "/incidents", "Incidents"),
-             ("reports", "/reports", "Agent Reports"), ("file-inbox", "/file-inbox", "File Inbox"), ("evidence", "/evidence", "Raw Evidence"),
-             ("search", "/search", "Search")]
-    links = "".join(f'<a class="nav{" active" if k == active else ""}" href="{href}">{label}</a>' for k, href, label in items)
-    return (f'{links}<div style="height:1px;background:#233047;margin:10px 0"></div>'
-            f'<a class="nav-cta" href="/incidents/new">+ ADD L</a>'
-            f'<a class="nav-cta alt" href="/reports/new">IMPORT REPORT</a>')
+    items = [
+        ("overview", "/", "Overview"),
+        ("incidents", "/incidents", "Incidents"),
+        ("reports", "/reports", "Agent Reports"),
+        ("file-inbox", "/file-inbox", "File Inbox"),
+        ("evidence", "/evidence", "Raw Evidence"),
+        ("search", "/search", "Search"),
+    ]
+    links = "".join(
+        f'<a class="nav{" active" if k == active else ""}" href="{href}">{label}</a>'
+        for k, href, label in items
+    )
+    return (
+        f'{links}<div style="height:1px;background:#233047;margin:10px 0"></div>'
+        f'<a class="nav-cta" href="/incidents/new">+ ADD L</a>'
+        f'<a class="nav-cta alt" href="/reports/new">IMPORT REPORT</a>'
+    )
 
 
 def _shell(active: str, title: str, body: str) -> str:
-    return f'''<!doctype html><html><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+    return f"""<!doctype html><html><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
 <title>{e(title)} · Diagnostic Clank</title>{_style()}</head><body><div class=app>
 <header><div class=brand>Diagnostic Clank<small>Local Archivist</small></div>
 <span class=badge>DIAGNOSTIC CLANK v0.1 · LOCAL ARCHIVIST / FIELD TEST</span><span class=spacer></span></header>
-<aside>{_nav(active)}</aside><main>{body}</main></div></body></html>'''
+<aside>{_nav(active)}</aside><main>{body}</main></div></body></html>"""
 
 
 def status_pill(value: str) -> str:
@@ -116,12 +143,13 @@ def status_pill(value: str) -> str:
 # page renderers
 # ---------------------------------------------------------------------------
 
+
 def render_overview(store: DiagnosticKnowledgeStore) -> str:
     incidents = store.incidents.list(limit=5)
     reports = store.inbox.list(limit=5)
     all_incidents = store.incidents.list(limit=10000)
     open_count = sum(1 for i in all_incidents if i.status == IncidentStatus.OPEN)
-    body = f'''<h1>Overview</h1><p class=muted>Local knowledge history archive. Nothing here has authority to change any Clank.</p>
+    body = f"""<h1>Overview</h1><p class=muted>Local knowledge history archive. Nothing here has authority to change any Clank.</p>
 <div class=grid4>
 <div class=stat><div class=muted>Incidents</div><b>{len(all_incidents)}</b></div>
 <div class=stat><div class=muted>Open</div><b>{open_count}</b></div>
@@ -129,38 +157,45 @@ def render_overview(store: DiagnosticKnowledgeStore) -> str:
 <div class=stat><div class=muted>Attachments</div><b>{store.attachments._con.execute("SELECT COUNT(*) c FROM attachments").fetchone()["c"]}</b></div>
 </div>
 <h2>Recent incidents</h2>{_incident_table(incidents)}
-<h2>Recent agent reports</h2>{_report_table(reports)}'''
+<h2>Recent agent reports</h2>{_report_table(reports)}"""
     return _shell("overview", "Overview", body)
 
 
 def _incident_table(incidents) -> str:
     if not incidents:
-        return '<div class=card><div class=empty>No incidents yet.<br>Click <b>+ ADD L</b> to record the first one.</div></div>'
+        return "<div class=card><div class=empty>No incidents yet.<br>Click <b>+ ADD L</b> to record the first one.</div></div>"
     rows = "".join(
         f'<tr><td><a href="/incidents/{e(i.incident_id)}">{e(i.title)}</a></td>'
-        f'<td>{e(i.clank_id)}</td><td>{status_pill(i.status.value)}</td>'
-        f'<td>{", ".join(e(c.value) for c in i.classification) or "—"}</td>'
-        f'<td>{e(i.updated_at.strftime("%Y-%m-%d %H:%M"))}</td></tr>'
+        f"<td>{e(i.clank_id)}</td><td>{status_pill(i.status.value)}</td>"
+        f"<td>{', '.join(e(c.value) for c in i.classification) or '—'}</td>"
+        f"<td>{e(i.updated_at.strftime('%Y-%m-%d %H:%M'))}</td></tr>"
         for i in incidents
     )
-    return f'<div class=card><table><thead><tr><th>Title</th><th>Clank</th><th>Status</th><th>Classification</th><th>Updated</th></tr></thead><tbody>{rows}</tbody></table></div>'
+    return f"<div class=card><table><thead><tr><th>Title</th><th>Clank</th><th>Status</th><th>Classification</th><th>Updated</th></tr></thead><tbody>{rows}</tbody></table></div>"
 
 
 def _report_table(reports) -> str:
     if not reports:
-        return '<div class=card><div class=empty>No agent reports yet.<br>Click <b>IMPORT REPORT</b> to paste the first one.</div></div>'
+        return "<div class=card><div class=empty>No agent reports yet.<br>Click <b>IMPORT REPORT</b> to paste the first one.</div></div>"
     rows = "".join(
         f'<tr><td><a href="/reports/{e(r.output_id)}">{e(r.output_id[:8])}</a></td>'
-        f'<td>{e(r.agent_family.value)}</td><td>{e(r.primary_clank_id)}</td>'
-        f'<td>{e(r.output_type.value)}</td><td>{e(r.created_at.strftime("%Y-%m-%d %H:%M"))}</td></tr>'
+        f"<td>{e(r.agent_family.value)}</td><td>{e(r.primary_clank_id)}</td>"
+        f"<td>{e(r.output_type.value)}</td><td>{e(r.created_at.strftime('%Y-%m-%d %H:%M'))}</td></tr>"
         for r in reports
     )
-    return f'<div class=card><table><thead><tr><th>ID</th><th>Agent</th><th>Clank</th><th>Type</th><th>Ingested</th></tr></thead><tbody>{rows}</tbody></table></div>'
+    return f"<div class=card><table><thead><tr><th>ID</th><th>Agent</th><th>Clank</th><th>Type</th><th>Ingested</th></tr></thead><tbody>{rows}</tbody></table></div>"
 
 
-def render_incidents_list(store: DiagnosticKnowledgeStore, clank_filter: str, status_filter: str) -> str:
-    incidents = store.incidents.list(clank_id=clank_filter or None, status=status_filter or None, limit=500)
-    opts_status = "".join(f'<option value="{s.value}" {"selected" if status_filter==s.value else ""}>{s.value}</option>' for s in IncidentStatus)
+def render_incidents_list(
+    store: DiagnosticKnowledgeStore, clank_filter: str, status_filter: str
+) -> str:
+    incidents = store.incidents.list(
+        clank_id=clank_filter or None, status=status_filter or None, limit=500
+    )
+    opts_status = "".join(
+        f'<option value="{s.value}" {"selected" if status_filter == s.value else ""}>{s.value}</option>'
+        for s in IncidentStatus
+    )
     body = f'''<h1>Incidents</h1>
 <form method=get class=card style="display:flex;gap:10px;align-items:end">
 <div><label>Clank</label><input type=text name=clank value="{e(clank_filter)}" placeholder="e.g. smartwatch-clank"></div>
@@ -171,10 +206,17 @@ def render_incidents_list(store: DiagnosticKnowledgeStore, clank_filter: str, st
 
 
 def render_incident_new_form(registry: ClankRegistry) -> str:
-    clank_opts = "".join(f'<option value="{e(c)}">{e(c)}</option>' for c in registry.list_ids()) + '<option value="fleet-wide">fleet-wide</option>'
-    class_opts = "".join(f'<option value="{c.value}">{c.value}</option>' for c in IncidentClassification)
-    status_opts = "".join(f'<option value="{s.value}">{s.value}</option>' for s in IncidentStatus)
-    body = f'''<h1>+ Add L</h1><p class=muted>Fast field-test logging. Nothing is required except Clank and title.</p>
+    clank_opts = (
+        "".join(f'<option value="{e(c)}">{e(c)}</option>' for c in registry.list_ids())
+        + '<option value="fleet-wide">fleet-wide</option>'
+    )
+    class_opts = "".join(
+        f'<option value="{c.value}">{c.value}</option>' for c in IncidentClassification
+    )
+    status_opts = "".join(
+        f'<option value="{s.value}">{s.value}</option>' for s in IncidentStatus
+    )
+    body = f"""<h1>+ Add L</h1><p class=muted>Fast field-test logging. Nothing is required except Clank and title.</p>
 <form method=post action="/incidents" class=card>
 <label>Clank / project *</label><select name=clank_id required>{clank_opts}</select>
 <label>Title *</label><input type=text name=title required placeholder="What happened, in one line">
@@ -190,33 +232,54 @@ def render_incident_new_form(registry: ClankRegistry) -> str:
 <label>Lesson / notes</label><textarea name=lessons rows=2></textarea>
 <label>Optional URL / reference</label><input type=text name=reference_url>
 <div style="margin-top:14px"><button>Save incident</button></div>
-</form>'''
+</form>"""
     return _shell("incidents", "Add L", body)
 
 
-def render_incident_detail(store: DiagnosticKnowledgeStore, incident_id: str) -> tuple[int, str]:
+def render_incident_detail(
+    store: DiagnosticKnowledgeStore, incident_id: str
+) -> tuple[int, str]:
     inc = store.incidents.get(incident_id)
     if inc is None:
-        return 404, _shell("incidents", "Not found", "<div class=card>Incident not found.</div>")
+        return 404, _shell(
+            "incidents", "Not found", "<div class=card>Incident not found.</div>"
+        )
     claims = store.incidents.claims_for(incident_id)
+
+    def claim_action(c) -> str:
+        if c.superseded_by:
+            return f"→ superseded by <a href=#claim-{e(c.superseded_by)}>{e(c.superseded_by[:8])}</a>"
+        safe_text = e(c.text[:60]).replace("'", "`")
+        return f"<a href=\"#\" onclick=\"return supersede('{e(c.claim_id)}','{safe_text}')\">Supersede this</a>"
+
     claim_rows = "".join(
         f'<tr id="claim-{e(c.claim_id)}"><td>{status_pill(c.status.value)}</td><td>{e(c.text)}</td><td>{e(c.source)}</td>'
-        f'<td>{e(c.created_at.strftime("%Y-%m-%d %H:%M"))}</td>'
-        f'<td>{f"→ superseded by <a href=#claim-{e(c.superseded_by)}>{e(c.superseded_by[:8])}</a>" if c.superseded_by else f'<a href="#" onclick="return supersede(\'{e(c.claim_id)}\',\'{e(c.text[:60]).replace(chr(39), chr(96))}\')">Supersede this</a>'}</td></tr>'
+        f"<td>{e(c.created_at.strftime('%Y-%m-%d %H:%M'))}</td>"
+        f"<td>{claim_action(c)}</td></tr>"
         for c in claims
     )
     evidence_rows = "".join(
-        f'<li><a href="/reports/{e(oid)}">{e(oid[:8])}</a></li>' for oid in inc.raw_evidence_ids
+        f'<li><a href="/reports/{e(oid)}">{e(oid[:8])}</a></li>'
+        for oid in inc.raw_evidence_ids
     )
     atts = store.attachments.for_incident(incident_id)
     att_rows = "".join(
         f'<li><a href="/attachments/{e(a.attachment_id)}/download">{e(a.original_filename)}</a> '
-        f'({a.size_bytes} bytes, sha256 {e(a.content_hash[:12])}…)</li>' for a in atts
+        f"({a.size_bytes} bytes, sha256 {e(a.content_hash[:12])}…)</li>"
+        for a in atts
     )
-    related = "".join(f'<li><a href="/incidents/{e(rid)}">{e(rid[:8])}</a></li>' for rid in inc.related_incident_ids)
-    status_opts = "".join(f'<option value="{s.value}" {"selected" if s==inc.status else ""}>{s.value}</option>' for s in IncidentStatus)
-    claim_status_opts = "".join(f'<option value="{s.value}">{s.value}</option>' for s in ClaimVerification)
-    body = f'''<h1>{e(inc.title)}</h1>
+    related = "".join(
+        f'<li><a href="/incidents/{e(rid)}">{e(rid[:8])}</a></li>'
+        for rid in inc.related_incident_ids
+    )
+    status_opts = "".join(
+        f'<option value="{s.value}" {"selected" if s == inc.status else ""}>{s.value}</option>'
+        for s in IncidentStatus
+    )
+    claim_status_opts = "".join(
+        f'<option value="{s.value}">{s.value}</option>' for s in ClaimVerification
+    )
+    body = f"""<h1>{e(inc.title)}</h1>
 <div class=card><div class=kv><b>Clank</b><span>{e(inc.clank_id)}</span></div>
 <div class=kv><b>Status</b><span>{status_pill(inc.status.value)}</span></div>
 <div class=kv><b>Classification</b><span>{", ".join(e(c.value) for c in inc.classification) or "—"}</span></div>
@@ -234,7 +297,7 @@ def render_incident_detail(store: DiagnosticKnowledgeStore, incident_id: str) ->
 <div><label>Change status</label><select name=status>{status_opts}</select></div><button>Update</button></form></div>
 
 <h2>Claim history</h2><div class=card>
-{'<table><thead><tr><th>Status</th><th>Text</th><th>Source</th><th>When</th><th></th></tr></thead><tbody>' + claim_rows + '</tbody></table>' if claims else '<div class=empty>No claims recorded yet.</div>'}
+{"<table><thead><tr><th>Status</th><th>Text</th><th>Source</th><th>When</th><th></th></tr></thead><tbody>" + claim_rows + "</tbody></table>" if claims else "<div class=empty>No claims recorded yet.</div>"}
 <form method=post action="/incidents/{e(inc.incident_id)}/claims" style="margin-top:12px" id=claim-form>
 <label>Add claim / observation</label><textarea name=text id=claim-text rows=2 required></textarea>
 <label>Source</label><input type=text name=source placeholder="owner / claude / codex / grok">
@@ -252,33 +315,93 @@ document.getElementById('claim-form').scrollIntoView({{behavior:'smooth'}});
 return false;
 }}</script>
 
-<h2>Raw evidence</h2><div class=card>{f'<ul>{evidence_rows}</ul>' if evidence_rows else '<div class=empty>No linked reports.</div>'}
+<h2>Raw evidence</h2><div class=card>{f"<ul>{evidence_rows}</ul>" if evidence_rows else "<div class=empty>No linked reports.</div>"}
 <form method=post action="/incidents/{e(inc.incident_id)}/link-evidence">
 <label>Link agent report by output_id</label><input type=text name=output_id placeholder="paste output_id">
 <div style="margin-top:10px"><button class=secondary>Link</button></div></form></div>
 
-<h2>Attachments</h2><div class=card>{f'<ul>{att_rows}</ul>' if att_rows else '<div class=empty>No attachments.</div>'}
+<h2>Attachments</h2><div class=card>{f"<ul>{att_rows}</ul>" if att_rows else "<div class=empty>No attachments.</div>"}
 <form method=post action="/incidents/{e(inc.incident_id)}/attachments" enctype=multipart/form-data>
 <label>Attach file (screenshot/log/text/markdown/json)</label><input type=file name=file required>
 <div style="margin-top:10px"><button class=secondary>Upload</button></div></form></div>
 
-<h2>Related incidents</h2><div class=card>{f'<ul>{related}</ul>' if related else '<div class=empty>None linked.</div>'}
+<h2>Related incidents</h2><div class=card>{f"<ul>{related}</ul>" if related else "<div class=empty>None linked.</div>"}
 <form method=post action="/incidents/{e(inc.incident_id)}/relate">
 <label>Relate incident by id</label><input type=text name=related_incident_id placeholder="paste incident_id">
-<div style="margin-top:10px"><button class=secondary>Relate</button></div></form></div>'''
+<div style="margin-top:10px"><button class=secondary>Relate</button></div></form></div>"""
     return 200, _shell("incidents", inc.title, body)
 
 
-def render_reports_list(store: DiagnosticKnowledgeStore) -> str:
+def _json_list(value: object) -> list[str]:
+    try:
+        parsed = json.loads(str(value or "[]"))
+        return parsed if isinstance(parsed, list) else []
+    except (TypeError, ValueError):
+        return []
+
+
+def _ingested_report_title(report: dict) -> str:
+    filename = report.get("filename") or ""
+    return filename or f"Report {str(report.get('report_id', ''))[:8]}"
+
+
+def _ingested_report_table(reports: list[dict]) -> str:
+    if not reports:
+        return "<div class=card><div class=empty>No API-ingested reports yet.</div></div>"
+    rows = "".join(
+        f'<tr><td><a href="/reports/{e(r["report_id"])}">{e(_ingested_report_title(r))}</a></td>'
+        f'<td>{e(r.get("source_agent"))}</td><td>{e(r.get("primary_clank_id") or "—")}</td>'
+        f'<td>{e(r.get("source_type"))}</td><td>{e(r.get("processing_revision"))}</td>'
+        f'<td>{e(r.get("created_at"))}</td></tr>'
+        for r in reports
+    )
+    return (
+        '<div class=card><p class=muted>These are immutable report records and background knowledge. '
+        'Their auto-extracted findings are not canonical incidents.</p>'
+        "<table><thead><tr><th>Report</th><th>Source</th><th>Scope</th><th>Type</th>"
+        "<th>Latest revision</th><th>Ingested</th></tr></thead><tbody>"
+        f"{rows}</tbody></table></div>"
+    )
+
+
+def _finding_table(findings: list[dict], report_id: str, revision: int) -> str:
+    if not findings:
+        return "<div class=card><div class=empty>No findings match these filters.</div></div>"
+    rows = "".join(
+        f'<tr><td><a href="/reports/{e(report_id)}/findings/{e(f["finding_id"])}">{e(f.get("historical_incident_id") or f.get("finding_id"))}</a></td>'
+        f'<td>{e(f.get("primary_clank_id") or "UNKNOWN")}</td><td>{e(f.get("title"))}</td>'
+        f'<td>{status_pill(f.get("epistemic_status") or "UNKNOWN")}</td>'
+        f'<td>{status_pill(f.get("resolution_status") or "UNKNOWN")}</td>'
+        f'<td>{e(f.get("finding_type") or "—")}</td>'
+        f'<td>{e(", ".join(_json_list(f.get("responsibility_json"))) or "—")}</td>'
+        f'<td>{status_pill(f.get("review_status") or "UNKNOWN")}</td></tr>'
+        for f in findings
+    )
+    return (
+        '<div class=card><p class=muted><b>BACKGROUND FINDINGS — AUTO_EXTRACTED</b>. '
+        'These records are not canonical incidents and have not been human-promoted.</p>'
+        '<table><thead><tr><th>Finding ID</th><th>Clank</th><th>Title</th><th>Epistemic</th>'
+        '<th>Resolution</th><th>Type</th><th>Responsibility</th><th>Review</th></tr></thead>'
+        f"<tbody>{rows}</tbody></table></div>"
+    )
+
+
+def render_reports_list(store: DiagnosticKnowledgeStore, query: str = "") -> str:
     reports = store.inbox.list(limit=500)
-    body = f'<h1>Agent Reports</h1>{_report_table(reports)}'
+    ingested = store.reports.list_reports(limit=500)
+    body = f"<h1>Reports</h1><h2>Agent Reports</h2>{_report_table(reports)}"
+    body += f"<h2>Ingested Reports / Background Knowledge</h2>{_ingested_report_table(ingested)}"
     return _shell("reports", "Agent Reports", body)
 
 
 def render_report_new_form() -> str:
-    agent_opts = "".join(f'<option value="{a.value}">{a.value}</option>' for a in AgentFamily)
-    type_opts = "".join(f'<option value="{t.value}">{t.value}</option>' for t in OutputType)
-    body = f'''<h1>Import Report</h1><p class=muted>Paste a complete Claude / Codex / Grok / owner report. The exact text is preserved verbatim as raw evidence; a CLANKOPS_RECORD footer (if present) is extracted deterministically.</p>
+    agent_opts = "".join(
+        f'<option value="{a.value}">{a.value}</option>' for a in AgentFamily
+    )
+    type_opts = "".join(
+        f'<option value="{t.value}">{t.value}</option>' for t in OutputType
+    )
+    body = f"""<h1>Import Report</h1><p class=muted>Paste a complete Claude / Codex / Grok / owner report. The exact text is preserved verbatim as raw evidence; a CLANKOPS_RECORD footer (if present) is extracted deterministically.</p>
 <form method=post action="/reports" class=card>
 <label>Agent</label><select name=agent_family>{agent_opts}</select>
 <label>Clank / project</label><input type=text name=primary_clank_id placeholder="e.g. smartwatch-clank, or fleet-wide">
@@ -286,29 +409,41 @@ def render_report_new_form() -> str:
 <label>Session label (optional)</label><input type=text name=session_label>
 <label>Raw report text *</label><textarea name=raw_text rows=18 required placeholder="Paste the complete report here, verbatim..."></textarea>
 <div style="margin-top:14px"><button>Import report</button></div>
-</form>'''
+</form>"""
     return _shell("reports", "Import Report", body)
 
 
-def render_report_detail(store: DiagnosticKnowledgeStore, output_id: str) -> tuple[int, str]:
+def render_report_detail(
+    store: DiagnosticKnowledgeStore, output_id: str
+) -> tuple[int, str]:
     rec = store.inbox.get(output_id)
     if rec is None:
-        return 404, _shell("reports", "Not found", "<div class=card>Report not found.</div>")
+        return 404, _shell(
+            "reports", "Not found", "<div class=card>Report not found.</div>"
+        )
     claims = store.inbox.claims_for(output_id)
-    claim_rows = "".join(f'<li>{status_pill(c.status.value)} {e(c.text)}</li>' for c in claims)
+    claim_rows = "".join(
+        f"<li>{status_pill(c.status.value)} {e(c.text)}</li>" for c in claims
+    )
     atts = store.attachments.for_output(output_id)
-    att_rows = "".join(f'<li><a href="/attachments/{e(a.attachment_id)}/download">{e(a.original_filename)}</a></li>' for a in atts)
+    att_rows = "".join(
+        f'<li><a href="/attachments/{e(a.attachment_id)}/download">{e(a.original_filename)}</a></li>'
+        for a in atts
+    )
     # CLANKOPS_RECORD is never persisted separately -- always re-derived from
     # the immutable raw_text, proving derived knowledge stays reconstructible.
     cor = extract_clankops_record(rec.raw_text)
     cor_html = ""
     if not cor.is_empty():
         cor_rows = "".join(
-            f'<div class=kv><b>{e(field)}</b><span>{e(value)}</span></div>'
-            for field, value in cor.model_dump().items() if value is not None
+            f"<div class=kv><b>{e(field)}</b><span>{e(value)}</span></div>"
+            for field, value in cor.model_dump().items()
+            if value is not None
         )
-        cor_html = f'<h2>CLANKOPS_RECORD (deterministically extracted)</h2><div class=card>{cor_rows}</div>'
-    body = f'''<h1>Agent Report {e(output_id[:8])}</h1>{cor_html}''' + f'''
+        cor_html = f"<h2>CLANKOPS_RECORD (deterministically extracted)</h2><div class=card>{cor_rows}</div>"
+    body = (
+        f"""<h1>Agent Report {e(output_id[:8])}</h1>{cor_html}"""
+        + f"""
 <div class=card>
 <div class=kv><b>Agent</b><span>{e(rec.agent_family.value)}</span></div>
 <div class=kv><b>Clank</b><span>{e(rec.primary_clank_id)}</span></div>
@@ -319,18 +454,83 @@ def render_report_detail(store: DiagnosticKnowledgeStore, output_id: str) -> tup
 <div class=kv><b>Detected git revision</b><span>{e(rec.related_git_revision) or "—"}</span></div>
 <div class=kv><b>Session</b><span>{e(rec.session_label) or "—"}</span></div>
 </div>
-<h2>Auto-extracted claims (heuristic, deterministic)</h2><div class=card>{f'<ul>{claim_rows}</ul>' if claim_rows else '<div class=empty>None extracted.</div>'}</div>
-<h2>Attachments</h2><div class=card>{f'<ul>{att_rows}</ul>' if att_rows else '<div class=empty>No attachments.</div>'}
+<h2>Auto-extracted claims (heuristic, deterministic)</h2><div class=card>{f"<ul>{claim_rows}</ul>" if claim_rows else "<div class=empty>None extracted.</div>"}</div>
+<h2>Attachments</h2><div class=card>{f"<ul>{att_rows}</ul>" if att_rows else "<div class=empty>No attachments.</div>"}
 <form method=post action="/reports/{e(output_id)}/attachments" enctype=multipart/form-data>
 <label>Attach file</label><input type=file name=file required>
 <div style="margin-top:10px"><button class=secondary>Upload</button></div></form></div>
-<h2>Raw report (verbatim)</h2><div class="card rawbox">{e(rec.raw_text)}</div>'''
+<h2>Raw report (verbatim)</h2><div class="card rawbox">{e(rec.raw_text)}</div>"""
+    )
     return 200, _shell("reports", f"Report {output_id[:8]}", body)
+
+
+def render_ingested_report_detail(
+    store: DiagnosticKnowledgeStore, report_id: str, revision: int | None = None
+) -> tuple[int, str]:
+    report = store.reports.get(report_id)
+    if report is None:
+        return 404, _shell("reports", "Not found", "<div class=card>Ingested report not found.</div>")
+    latest = int(report["processing_revision"])
+    selected = revision or latest
+    if selected < 1 or selected > latest:
+        selected = latest
+    findings = store.reports.rows("report_findings", report_id, selected)
+    claims = store.reports.rows("report_claims", report_id, selected)
+    lessons = store.reports.rows("report_lessons", report_id, selected)
+    claims_text = "\n".join(str(c.get("claim_text", "")) for c in claims) or "None"
+    lessons_text = "\n\n".join(str(l.get("text", "")) for l in lessons) or "None"
+    revisions = " ".join(
+        f'<a href="/reports/{e(report_id)}?revision={n}">{n}</a>'
+        if n != selected else f"<b>{n}</b>"
+        for n in range(1, latest + 1)
+    )
+    body = f"""<h1>{e(_ingested_report_title(dict(report)))}</h1>
+<p class=muted><b>BACKGROUND REPORT</b> · Auto-extracted findings remain distinct from canonical incidents.</p>
+<div class=card><div class=kv><b>Report identifier</b><span>{e(report_id)}</span></div>
+<div class=kv><b>Source agent</b><span>{e(report['source_agent'])}</span></div>
+<div class=kv><b>Report type</b><span>{e(report['source_type'])}</span></div>
+<div class=kv><b>Primary scope / Clank</b><span>{e(report['primary_clank_id'] or '—')}</span></div>
+<div class=kv><b>SHA-256</b><span>{e(report['sha256'])}</span></div>
+<div class=kv><b>Size</b><span>{e(report['byte_size'])} bytes / {e(report['text_size'])} text bytes</span></div>
+<div class=kv><b>Ingested at</b><span>{e(report['created_at'])}</span></div>
+<div class=kv><b>Latest revision</b><span>{e(latest)}</span></div>
+<div class=kv><b>Available revisions</b><span>{revisions}</span></div>
+<div class=kv><b>Selected revision</b><span>{e(selected)}</span></div>
+<div class=kv><b>Counts</b><span>{len(store.reports.rows('report_chunks', report_id, selected))} chunks · {len(findings)} findings · {len(claims)} claims · {len(lessons)} lessons</span></div>
+</div>
+<h2>Findings — revision {e(selected)}</h2>{_finding_table(findings, report_id, selected)}
+<h2>Claims — revision {e(selected)}</h2><div class=card><div class=rawbox>{e(claims_text)}</div></div>
+<h2>Lessons — revision {e(selected)}</h2><div class=card><div class=rawbox>{e(lessons_text)}</div></div>"""
+    return 200, _shell("reports", _ingested_report_title(dict(report)), body)
+
+
+def render_ingested_finding_detail(
+    store: DiagnosticKnowledgeStore, report_id: str, finding_id: str
+) -> tuple[int, str]:
+    report = store.reports.get(report_id)
+    if report is None:
+        return 404, _shell("reports", "Not found", "<div class=card>Report not found.</div>")
+    rows = store.reports.rows("report_findings", report_id, int(report["processing_revision"]))
+    finding = next((f for f in rows if f["finding_id"] == finding_id), None)
+    if finding is None:
+        return 404, _shell("reports", "Not found", "<div class=card>Finding not found.</div>")
+    fields = (
+        ("Finding ID", finding.get("finding_id")), ("Canonical incident", "NO — auto-extracted background finding"),
+        ("Clank", finding.get("primary_clank_id") or "UNKNOWN"), ("Title", finding.get("title")),
+        ("Epistemic status", finding.get("epistemic_status")), ("Resolution status", finding.get("resolution_status")),
+        ("Finding type", finding.get("finding_type")), ("Failure class", finding.get("failure_class") or "—"),
+        ("Responsibility", ", ".join(_json_list(finding.get("responsibility_json"))) or "—"),
+        ("Review status", finding.get("review_status") or "UNKNOWN"), ("Revision", finding.get("revision")),
+        ("Root cause", finding.get("root_cause") or "UNKNOWN"), ("Lesson", finding.get("lesson") or "—"),
+    )
+    rows_html = "".join(f"<div class=kv><b>{e(k)}</b><span>{e(v)}</span></div>" for k, v in fields)
+    body = f"<h1>{e(finding.get('title'))}</h1><p class=muted><b>AUTO_EXTRACTED</b> · background knowledge only; no canonical incident was created.</p><div class=card>{rows_html}</div><h2>Summary</h2><div class=card><div class=rawbox>{e(finding.get('summary') or '—')}</div></div>"
+    return 200, _shell("reports", finding.get("title") or "Finding", body)
 
 
 def render_evidence_list(store: DiagnosticKnowledgeStore) -> str:
     reports = store.inbox.list(limit=500)
-    body = f'<h1>Raw Evidence</h1><p class=muted>All immutable raw evidence, inspectable without querying SQLite directly.</p>{_report_table(reports)}'
+    body = f"<h1>Raw Evidence</h1><p class=muted>All immutable raw evidence, inspectable without querying SQLite directly.</p>{_report_table(reports)}"
     return _shell("evidence", "Raw Evidence", body)
 
 
@@ -346,10 +546,27 @@ def render_search(store: DiagnosticKnowledgeStore, query: str) -> str:
             f'<tr><td><a href="/reports/{e(r.output_id)}">{e(r.output_id[:8])}</a></td><td>{e(r.agent_family.value)}</td><td>{e(r.primary_clank_id)}</td></tr>'
             for r in results["reports"]
         )
-        results_html = f'''<h2>Incidents ({len(results["incidents"])})</h2>
-<div class=card>{f'<table><tbody>{inc_rows}</tbody></table>' if inc_rows else '<div class=empty>No matching incidents.</div>'}</div>
+        needle = query.casefold()
+        ingested_rows = []
+        for report in store.reports.list_reports(limit=500):
+            revision = int(report["processing_revision"])
+            for finding in store.reports.rows("report_findings", report["report_id"], revision):
+                haystack = " ".join(
+                    str(finding.get(k) or "")
+                    for k in ("finding_id", "historical_incident_id", "primary_clank_id", "title", "summary", "root_cause", "lesson", "finding_type", "review_status")
+                ).casefold()
+                if needle in haystack:
+                    ingested_rows.append(
+                        f'<tr><td><a href="/reports/{e(report["report_id"])}/findings/{e(finding["finding_id"])}">{e(finding.get("historical_incident_id") or finding["finding_id"])}</a></td>'
+                        f'<td>{e(finding.get("title"))}</td><td>{e(finding.get("primary_clank_id") or "UNKNOWN")}</td>'
+                        f'<td>{status_pill(finding.get("review_status") or "UNKNOWN")}</td></tr>'
+                    )
+        results_html = f"""<h2>Incidents ({len(results["incidents"])})</h2>
+<div class=card>{f"<table><tbody>{inc_rows}</tbody></table>" if inc_rows else "<div class=empty>No matching incidents.</div>"}</div>
 <h2>Agent reports ({len(results["reports"])})</h2>
-<div class=card>{f'<table><tbody>{rep_rows}</tbody></table>' if rep_rows else '<div class=empty>No matching reports.</div>'}</div>'''
+<div class=card>{f"<table><tbody>{rep_rows}</tbody></table>" if rep_rows else "<div class=empty>No matching reports.</div>"}</div>
+<h2>Background report findings ({len(ingested_rows)})</h2>
+<div class=card>{f"<table><thead><tr><th>Finding</th><th>Title</th><th>Clank</th><th>Review</th></tr></thead><tbody>{''.join(ingested_rows)}</tbody></table>" if ingested_rows else "<div class=empty>No matching background findings.</div>"}</div>"""
     body = f'''<h1>Search</h1>
 <form method=get class=card style="display:flex;gap:10px"><input type=text name=q value="{e(query)}" placeholder="title, clank, agent, classification, raw report text, root cause, resolution, lessons..."><button>Search</button></form>
 {results_html}'''
@@ -357,9 +574,9 @@ def render_search(store: DiagnosticKnowledgeStore, query: str) -> str:
 
 
 def render_ingest_landing() -> str:
-    body = '''<h1>Ingest</h1><p class=muted>Two ways to add knowledge:</p>
+    body = """<h1>Ingest</h1><p class=muted>Two ways to add knowledge:</p>
 <div class=card><h2>+ Add L</h2><p class=muted>Log an incident manually -- fast, minimal required fields.</p><a class="nav-cta" style="display:inline-block;width:auto;padding:10px 20px" href="/incidents/new">+ ADD L</a></div>
-<div class=card><h2>Import Report</h2><p class=muted>Paste a complete Claude/Codex/Grok/owner report verbatim.</p><a class="nav-cta alt" style="display:inline-block;width:auto;padding:10px 20px" href="/reports/new">IMPORT REPORT</a></div>'''
+<div class=card><h2>Import Report</h2><p class=muted>Paste a complete Claude/Codex/Grok/owner report verbatim.</p><a class="nav-cta alt" style="display:inline-block;width:auto;padding:10px 20px" href="/reports/new">IMPORT REPORT</a></div>"""
     return _shell("overview", "Ingest", body)
 
 
@@ -370,53 +587,66 @@ def render_ingest_landing() -> str:
 
 def render_file_inbox(store: DiagnosticKnowledgeStore, scan_summary: str = "") -> str:
     from diagnostic_clank.paths import resolve_report_paths
+
     rp = resolve_report_paths()
+
     def _list(dir_path, limit=50):
         if not dir_path.is_dir():
             return []
         files = sorted(
-            [f for f in dir_path.iterdir() if f.is_file() and not f.name.endswith(".reason.txt")],
+            [
+                f
+                for f in dir_path.iterdir()
+                if f.is_file() and not f.name.endswith(".reason.txt")
+            ],
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
         return files[:limit]
+
     inbox_files = _list(rp.inbox)
     processed_files = _list(rp.processed)
     quarantined = _list(rp.quarantine)
+
     def rows(files, empty):
         if not files:
-            return f'<div class=empty>{empty}</div>'
+            return f"<div class=empty>{empty}</div>"
         body = "".join(
             f"<tr><td>{e(f.name)}</td><td class=muted>{e(f.stat().st_size)} B</td></tr>"
             for f in files
         )
         return f"<table><tr><th>File</th><th>Size</th></tr>{body}</table>"
-    summary_html = f'<div class=card>{e(scan_summary)}</div>' if scan_summary else ""
+
+    summary_html = f"<div class=card>{e(scan_summary)}</div>" if scan_summary else ""
     body = (
-        f'<h1>File Inbox</h1>'
-        f'<p class=muted>Logical root: <code>CLANKOPS_REPORT_ROOT</code> resolved to '
-        f'<code>{e(rp.root)}</code></p>'
-        f'{summary_html}'
+        f"<h1>File Inbox</h1>"
+        f"<p class=muted>Logical root: <code>CLANKOPS_REPORT_ROOT</code> resolved to "
+        f"<code>{e(rp.root)}</code></p>"
+        f"{summary_html}"
         f'<form method=post action="/file-inbox/scan" class=card>'
-        f'<button type=submit>Scan inbox now</button> '
-        f'<span class=muted>Preserves raw evidence by content hash; moves to processed/ or quarantine/</span>'
-        f'</form>'
-        f'<div class=grid4>'
-        f'<div class=stat><div class=muted>Inbox</div><b>{len(inbox_files)}</b></div>'
-        f'<div class=stat><div class=muted>Processed</div><b>{len(processed_files)}</b></div>'
-        f'<div class=stat><div class=muted>Quarantine</div><b>{len(quarantined)}</b></div>'
-        f'<div class=stat><div class=muted>Agent reports (DB)</div><b>{len(store.inbox.list(limit=100000))}</b></div>'
-        f'</div>'
-        f'<h2>Inbox</h2><div class=card>{rows(inbox_files, "Empty")}</div>'
-        f'<h2>Processed</h2><div class=card>{rows(processed_files, "None yet")}</div>'
-        f'<h2>Quarantine</h2><div class=card>{rows(quarantined, "None")}</div>'
+        f"<button type=submit>Scan inbox now</button> "
+        f"<span class=muted>Preserves raw evidence by content hash; moves to processed/ or quarantine/</span>"
+        f"</form>"
+        f"<div class=grid4>"
+        f"<div class=stat><div class=muted>Inbox</div><b>{len(inbox_files)}</b></div>"
+        f"<div class=stat><div class=muted>Processed</div><b>{len(processed_files)}</b></div>"
+        f"<div class=stat><div class=muted>Quarantine</div><b>{len(quarantined)}</b></div>"
+        f"<div class=stat><div class=muted>Agent reports (DB)</div><b>{len(store.inbox.list(limit=100000))}</b></div>"
+        f"</div>"
+        f"<h2>Inbox</h2><div class=card>{rows(inbox_files, 'Empty')}</div>"
+        f"<h2>Processed</h2><div class=card>{rows(processed_files, 'None yet')}</div>"
+        f"<h2>Quarantine</h2><div class=card>{rows(quarantined, 'None')}</div>"
     )
     return _shell("file-inbox", "File Inbox", body)
 
 
-def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HTTPServer, DiagnosticKnowledgeStore]:
+def serve(
+    paths: StatePaths, host: str = "127.0.0.1", port: int = 0
+) -> tuple[HTTPServer, DiagnosticKnowledgeStore]:
     registry = build_registry()
-    store = DiagnosticKnowledgeStore(paths.db_path, paths.evidence_dir, paths.quarantine_dir, registry)
+    store = DiagnosticKnowledgeStore(
+        paths.db_path, paths.evidence_dir, paths.quarantine_dir, registry
+    )
 
     class Handler(BaseHTTPRequestHandler):
         def _html(self, status: int, body: str) -> None:
@@ -445,43 +675,124 @@ def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HT
             path = parsed.path
             qs = parse_qs(parsed.query)
             if path == "/healthz":
-                self._json(200, {"application": "DiagnosticClank", "status": "ok", "db": str(store.db_path)})
+                self._json(
+                    200,
+                    {
+                        "application": "DiagnosticClank",
+                        "status": "ok",
+                        "db": str(store.db_path),
+                    },
+                )
+                return
+            if path == "/api/v1/reports":
+                self._json(200, {"reports": store.reports.list_reports()})
+                return
+            if path.startswith("/api/v1/reports/"):
+                parts = path.split("/")
+                report_id = parts[4] if len(parts) > 4 else ""
+                report = store.reports.get(report_id)
+                if report is None:
+                    self._json(404, {"error": "unknown_report"})
+                    return
+                if len(parts) == 5:
+                    self._json(200, dict(report))
+                    return
+                suffix = parts[5]
+                table = {
+                    "chunks": "report_chunks",
+                    "claims": "report_claims",
+                    "incidents": "report_findings",
+                    "lessons": "report_lessons",
+                }.get(suffix)
+                if table:
+                    self._json(200, {suffix: store.reports.rows(table, report_id)})
+                    return
+                if suffix == "status":
+                    self._json(
+                        200,
+                        {
+                            k: report[k]
+                            for k in (
+                                "report_id",
+                                "ingestion_status",
+                                "processing_revision",
+                                "byte_size",
+                                "text_size",
+                                "warnings_json",
+                            )
+                        },
+                    )
+                    return
+                self._json(404, {"error": "unknown_report_resource"})
                 return
             if path == "/":
-                self._html(200, render_overview(store)); return
+                self._html(200, render_overview(store))
+                return
             if path == "/incidents/new":
-                self._html(200, render_incident_new_form(registry)); return
+                self._html(200, render_incident_new_form(registry))
+                return
             if path == "/incidents":
-                self._html(200, render_incidents_list(store, qs.get("clank", [""])[0], qs.get("status", [""])[0])); return
+                self._html(
+                    200,
+                    render_incidents_list(
+                        store, qs.get("clank", [""])[0], qs.get("status", [""])[0]
+                    ),
+                )
+                return
             if path.startswith("/incidents/"):
                 incident_id = path.rsplit("/", 1)[1]
                 status, body = render_incident_detail(store, incident_id)
-                self._html(status, body); return
+                self._html(status, body)
+                return
             if path == "/reports/new":
-                self._html(200, render_report_new_form()); return
+                self._html(200, render_report_new_form())
+                return
             if path == "/file-inbox":
-                self._html(200, render_file_inbox(store)); return
+                self._html(200, render_file_inbox(store))
+                return
             if path == "/reports":
-                self._html(200, render_reports_list(store)); return
+                self._html(200, render_reports_list(store, qs.get("q", [""])[0]))
+                return
+            if path.startswith("/reports/") and "/findings/" in path:
+                report_id, finding_id = path.split("/reports/", 1)[1].split("/findings/", 1)
+                status, body = render_ingested_finding_detail(store, report_id, finding_id)
+                self._html(status, body)
+                return
+            if path.startswith("/reports/"):
+                report_id = path.rsplit("/", 1)[1]
+                if store.reports.get(report_id) is not None:
+                    revision = qs.get("revision", [None])[0]
+                    selected = int(revision) if revision and revision.isdigit() else None
+                    status, body = render_ingested_report_detail(store, report_id, selected)
+                    self._html(status, body)
+                    return
             if path.startswith("/reports/"):
                 output_id = path.rsplit("/", 1)[1]
                 status, body = render_report_detail(store, output_id)
-                self._html(status, body); return
+                self._html(status, body)
+                return
             if path == "/evidence":
-                self._html(200, render_evidence_list(store)); return
+                self._html(200, render_evidence_list(store))
+                return
             if path == "/search":
-                self._html(200, render_search(store, qs.get("q", [""])[0])); return
+                self._html(200, render_search(store, qs.get("q", [""])[0]))
+                return
             if path == "/ingest":
-                self._html(200, render_ingest_landing()); return
+                self._html(200, render_ingest_landing())
+                return
             if path.startswith("/attachments/") and path.endswith("/download"):
                 attachment_id = path.split("/")[2]
                 att = store.attachments.get(attachment_id)
                 if att is None:
-                    self.send_error(404); return
+                    self.send_error(404)
+                    return
                 data = store.attachments.read_bytes(attachment_id)
                 self.send_response(200)
                 self.send_header("Content-Type", "application/octet-stream")
-                self.send_header("Content-Disposition", f'attachment; filename="{att.original_filename}"')
+                self.send_header(
+                    "Content-Disposition",
+                    f'attachment; filename="{att.original_filename}"',
+                )
                 self.send_header("Content-Length", str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
@@ -493,20 +804,32 @@ def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HT
             body = self.rfile.read(length).decode("utf-8", errors="replace")
             return parse_qs(body)
 
-        def _read_multipart(self) -> tuple[dict[str, list[str]], bytes | None, str | None]:
+        def _read_multipart(
+            self,
+        ) -> tuple[dict[str, list[str]], bytes | None, str | None]:
             import cgi
+
             ctype = self.headers.get("Content-Type", "")
             length = int(self.headers.get("Content-Length", "0"))
             fs = cgi.FieldStorage(
-                fp=self.rfile, headers=self.headers,
-                environ={"REQUEST_METHOD": "POST", "CONTENT_TYPE": ctype, "CONTENT_LENGTH": str(length)},
+                fp=self.rfile,
+                headers=self.headers,
+                environ={
+                    "REQUEST_METHOD": "POST",
+                    "CONTENT_TYPE": ctype,
+                    "CONTENT_LENGTH": str(length),
+                },
             )
             fields: dict[str, list[str]] = {}
             file_bytes, file_name = None, None
             for key in fs.keys():
                 item = fs[key]
                 if getattr(item, "filename", None):
-                    file_bytes = item.value if isinstance(item.value, bytes) else item.value.encode("utf-8")
+                    file_bytes = (
+                        item.value
+                        if isinstance(item.value, bytes)
+                        else item.value.encode("utf-8")
+                    )
                     file_name = item.filename
                 else:
                     fields.setdefault(key, []).append(item.value)
@@ -517,29 +840,76 @@ def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HT
             path = parsed.path
             content_type = self.headers.get("Content-Type", "")
             try:
+                if path.startswith("/api/v1/reports/") and path.endswith("/reprocess"):
+                    report_id = path.split("/")[4]
+                    result = store.reports.process(report_id)
+                    self._json(200, {"report_id": report_id, **result})
+                    return
+                if path in ("/api/v1/reports", "/api/v1/reports/upload"):
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if length <= 0:
+                        self._json(400, {"error": "content_length_required"})
+                        return
+                    if length > MAX_REPORT_UPLOAD_BYTES:
+                        self._json(413, {"error": "payload_too_large", "max_bytes": MAX_REPORT_UPLOAD_BYTES})
+                        return
+                    body = self.rfile.read(length)
+                    content_type = self.headers.get("Content-Type", "text/plain")
+                    if content_type.startswith("application/json"):
+                        payload = json.loads(body.decode("utf-8"))
+                        body = payload.get("raw_text", "").encode("utf-8")
+                        if not body:
+                            self._json(400, {"error": "raw_text_required"})
+                            return
+                    result = store.reports.ingest_bytes(
+                        body,
+                        source_agent=self.headers.get("X-Source-Agent", "IMPORT"),
+                        source_type=self.headers.get("X-Source-Type", "text"),
+                        filename=self.headers.get("X-Filename"),
+                        mime_type=content_type,
+                        primary_clank_id=self.headers.get("X-Primary-Clank"),
+                        source_context=self.headers.get("X-Source-Context"),
+                        operator_note=self.headers.get("X-Operator-Note"),
+                    )
+                    self._json(
+                        200 if result.get("status") == "duplicate" else 201, result
+                    )
+                    return
                 if path == "/incidents":
                     form = self._read_form()
                     inc = store.incidents.create(
                         clank_id=form.get("clank_id", [""])[0].strip(),
                         title=form.get("title", [""])[0].strip(),
-                        classification=[IncidentClassification(v) for v in form.get("classification", [])],
+                        classification=[
+                            IncidentClassification(v)
+                            for v in form.get("classification", [])
+                        ],
                         severity=form.get("severity", [None])[0] or None,
                         status=IncidentStatus(form.get("status", ["OPEN"])[0]),
                         reported_by=form.get("reported_by", [None])[0] or None,
-                        expected_behaviour=form.get("expected_behaviour", [None])[0] or None,
-                        observed_behaviour=form.get("observed_behaviour", [None])[0] or None,
+                        expected_behaviour=form.get("expected_behaviour", [None])[0]
+                        or None,
+                        observed_behaviour=form.get("observed_behaviour", [None])[0]
+                        or None,
                         root_cause=form.get("root_cause", [None])[0] or None,
-                        root_cause_certainty=RootCauseCertainty.HYPOTHESIS if form.get("root_cause", [""])[0] else RootCauseCertainty.UNKNOWN,
+                        root_cause_certainty=RootCauseCertainty.HYPOTHESIS
+                        if form.get("root_cause", [""])[0]
+                        else RootCauseCertainty.UNKNOWN,
                         resolution=form.get("resolution", [None])[0] or None,
-                        lessons=(form.get("lessons", [None])[0] or None) or (form.get("narrative", [None])[0] or None),
+                        lessons=(form.get("lessons", [None])[0] or None)
+                        or (form.get("narrative", [None])[0] or None),
                         reference_url=form.get("reference_url", [None])[0] or None,
                     )
-                    self._redirect(f"/incidents/{inc.incident_id}"); return
+                    self._redirect(f"/incidents/{inc.incident_id}")
+                    return
                 if path.startswith("/incidents/") and path.endswith("/status"):
                     incident_id = path.split("/")[2]
                     form = self._read_form()
-                    store.incidents.update_status(incident_id, IncidentStatus(form.get("status", ["OPEN"])[0]))
-                    self._redirect(f"/incidents/{incident_id}"); return
+                    store.incidents.update_status(
+                        incident_id, IncidentStatus(form.get("status", ["OPEN"])[0])
+                    )
+                    self._redirect(f"/incidents/{incident_id}")
+                    return
                 if path.startswith("/incidents/") and path.endswith("/claims"):
                     incident_id = path.split("/")[2]
                     form = self._read_form()
@@ -548,71 +918,109 @@ def serve(paths: StatePaths, host: str = "127.0.0.1", port: int = 0) -> tuple[HT
                     status = ClaimVerification(form.get("status", ["REPORTED"])[0])
                     source = form.get("source", [None])[0] or None
                     if not text:
-                        self._redirect(f"/incidents/{incident_id}"); return
+                        self._redirect(f"/incidents/{incident_id}")
+                        return
                     if supersedes:
-                        store.incidents.supersede_claim(supersedes, text, source=source, status=status)
+                        store.incidents.supersede_claim(
+                            supersedes, text, source=source, status=status
+                        )
                     else:
-                        store.incidents.add_claim(incident_id, text, source=source, status=status)
-                    self._redirect(f"/incidents/{incident_id}"); return
+                        store.incidents.add_claim(
+                            incident_id, text, source=source, status=status
+                        )
+                    self._redirect(f"/incidents/{incident_id}")
+                    return
                 if path.startswith("/incidents/") and path.endswith("/link-evidence"):
                     incident_id = path.split("/")[2]
                     form = self._read_form()
                     output_id = form.get("output_id", [""])[0].strip()
                     if output_id and store.inbox.get(output_id) is not None:
                         store.incidents.link_evidence(incident_id, output_id)
-                    self._redirect(f"/incidents/{incident_id}"); return
+                    self._redirect(f"/incidents/{incident_id}")
+                    return
                 if path.startswith("/incidents/") and path.endswith("/relate"):
                     incident_id = path.split("/")[2]
                     form = self._read_form()
                     related_id = form.get("related_incident_id", [""])[0].strip()
                     if related_id and store.incidents.get(related_id) is not None:
                         store.incidents.relate(incident_id, related_id)
-                    self._redirect(f"/incidents/{incident_id}"); return
+                    self._redirect(f"/incidents/{incident_id}")
+                    return
                 if path.startswith("/incidents/") and path.endswith("/attachments"):
                     incident_id = path.split("/")[2]
                     fields, file_bytes, file_name = self._read_multipart()
                     if file_bytes is not None:
                         try:
-                            store.attachments.save(content=file_bytes, original_filename=file_name or "upload", incident_id=incident_id)
+                            store.attachments.save(
+                                content=file_bytes,
+                                original_filename=file_name or "upload",
+                                incident_id=incident_id,
+                            )
                         except AttachmentQuarantined:
                             pass  # invalid input never damages canonical state; silently quarantined
-                    self._redirect(f"/incidents/{incident_id}"); return
+                    self._redirect(f"/incidents/{incident_id}")
+                    return
                 if path.startswith("/reports/") and path.endswith("/attachments"):
                     output_id = path.split("/")[2]
                     fields, file_bytes, file_name = self._read_multipart()
                     if file_bytes is not None:
                         try:
-                            store.attachments.save(content=file_bytes, original_filename=file_name or "upload", output_id=output_id)
+                            store.attachments.save(
+                                content=file_bytes,
+                                original_filename=file_name or "upload",
+                                output_id=output_id,
+                            )
                         except AttachmentQuarantined:
                             pass
-                    self._redirect(f"/reports/{output_id}"); return
+                    self._redirect(f"/reports/{output_id}")
+                    return
                 if path == "/reports":
                     form = self._read_form()
                     raw_text = form.get("raw_text", [""])[0]
-                    clank_id = form.get("primary_clank_id", ["fleet-wide"])[0].strip() or "fleet-wide"
+                    clank_id = (
+                        form.get("primary_clank_id", ["fleet-wide"])[0].strip()
+                        or "fleet-wide"
+                    )
                     if clank_id != "fleet-wide" and registry.get(clank_id) is None:
-                        registry.register(ClankRegistration(clank_id=clank_id, display_name=clank_id))
+                        registry.register(
+                            ClankRegistration(clank_id=clank_id, display_name=clank_id)
+                        )
                     result = store.ingest_report(
                         agent_family=AgentFamily(form.get("agent_family", ["misc"])[0]),
                         primary_clank_id=clank_id,
                         raw_text=raw_text,
-                        output_type=OutputType(form.get("output_type", ["general_note"])[0]),
+                        output_type=OutputType(
+                            form.get("output_type", ["general_note"])[0]
+                        ),
                         session_label=form.get("session_label", [None])[0] or None,
                     )
-                    self._redirect(f"/reports/{result.output.output_id}"); return
+                    self._redirect(f"/reports/{result.output.output_id}")
+                    return
                 if path == "/file-inbox/scan":
                     from diagnostic_clank.report_pipeline import scan_and_ingest
-                    from diagnostic_clank.paths import resolve_report_paths, resolve_state_paths
+                    from diagnostic_clank.paths import (
+                        resolve_report_paths,
+                        resolve_state_paths,
+                    )
+
                     reports = resolve_report_paths()
                     scan = scan_and_ingest(store, reports)
                     summary = (
                         f"scanned={scan.scanned} ingested={scan.ingested} "
                         f"duplicates={scan.duplicates} quarantined={scan.quarantined}"
                     )
-                    self._html(200, render_file_inbox(store, summary)); return
+                    self._html(200, render_file_inbox(store, summary))
+                    return
                 self.send_error(404)
             except (KeyError, ValueError) as exc:
-                self._html(400, _shell("overview", "Error", f'<div class=card>Request error: {e(exc)}</div>'))
+                self._html(
+                    400,
+                    _shell(
+                        "overview",
+                        "Error",
+                        f"<div class=card>Request error: {e(exc)}</div>",
+                    ),
+                )
 
         def log_message(self, *_: object) -> None:
             pass

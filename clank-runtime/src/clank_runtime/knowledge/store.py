@@ -29,6 +29,7 @@ from clank_runtime.knowledge.incidents import (
     RootCauseCertainty,
 )
 from clank_runtime.registry.core import ClankRegistration, ClankRegistry
+from clank_runtime.knowledge.report_ingestion import ReportIngestionStore
 
 
 @dataclass
@@ -46,6 +47,7 @@ class DiagnosticKnowledgeStore:
         self.inbox = AgentOutputInbox(self.db_path, self.registry)
         self.incidents = IncidentStore(self.db_path, self.registry)
         self.attachments = AttachmentStore(self.db_path, evidence_dir, quarantine_dir)
+        self.reports = ReportIngestionStore(self.db_path, Path(evidence_dir) / "reports", self.registry)
         self._reports_con = sqlite3.connect(self.db_path, check_same_thread=False)
         self._reports_con.row_factory = sqlite3.Row
         self._reports_con.executescript(
@@ -59,6 +61,7 @@ class DiagnosticKnowledgeStore:
         self.incidents.close()
         self.attachments.close()
         self._reports_con.close()
+        self.reports.close()
 
     # -- ingestion ------------------------------------------------------------
 
@@ -131,4 +134,5 @@ __all__ = [
     "IncidentStatus", "IncidentStore", "RootCauseCertainty",
     "ClankRegistration", "ClankRegistry",
     "DiagnosticKnowledgeStore", "IngestResult",
+    "ReportIngestionStore",
 ]

@@ -1,0 +1,86 @@
+case_id: DB-012
+title: Watch Clank Timex Hall of Shame — novelty failure and genuine misses
+affected_clank: watch-clank
+related_clanks: [fleet-wide]
+period: "2026-08"
+incident_family: freshness_novelty
+evidence_status: CONFIRMED_L_PARTIAL_FIX
+confidence: high
+raw_evidence_requirements:
+  - kind: owner_note
+    source_agent: owner
+    must_preserve_verbatim: true
+    notes: Timex Hall of Shame report covering five observed product outcomes.
+  - kind: audit_excerpt
+    source_agent: system
+    must_preserve_verbatim: true
+    notes: Timex Cavatina Luxe launch post dated 2026-08-11 and related first-party product evidence.
+expected:
+  classification: [FRESHNESS_FAILURE, NOVELTY_FAILURE, SOURCE_GAP, EDITORIAL_YIELD_FAILURE]
+  status: PARTIAL
+  root_cause: "Watch Clank treated collector first-seen time or live-page visibility as product novelty without reliable first-party launch-history validation; discovery coverage also missed some genuine Timex launches."
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  preserves_superseding_claim: true
+  preserves_contradiction: true
+  resolution_linked: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-012-c1
+    text: "A previously unseen Timex SKU or URL is a new-product candidate."
+    authority_domain: agent_assertion
+    expected_fate: superseded
+  - id: DB-012-c2
+    text: "Cavatina Luxe was a genuine recent launch missed by Watch Clank."
+    authority_domain: owner_observation
+    expected_fate: retained
+  - id: DB-012-c3
+    text: "Peanuts x Timex Legacy Snoopy Umbrella TW2Y85500 was a probable genuine miss."
+    authority_domain: owner_observation
+    expected_fate: retained
+  - id: DB-012-c4
+    text: "Peanuts x Timex Marlin 1965 Reissue Inspired Snoopy Tennis TW2Y12500 was surfaced after its June 2026 announcement and was stale for novelty purposes."
+    authority_domain: owner_observation
+    expected_fate: retained
+  - id: DB-012-c5
+    text: "Timex x Pan Am Waterbury Ace Chronograph TW2Y38700 was surfaced nearly a year after its September 2025 announcement and was extremely stale."
+    authority_domain: owner_observation
+    expected_fate: retained
+  - id: DB-012-c6
+    text: "Timex Expedition Field Chronograph TW4B20700 was catalogue archaeology without a convincing current launch event."
+    authority_domain: owner_observation
+    expected_fate: retained
+fix: "Separate discovered_at from product_launched_at. Before a candidate reaches QC, validate exact-SKU age against first-party launch history and corroborating evidence, then check editorial coverage independently. Monitor Timex blog, collection pages, product feeds, and launch surfaces together."
+lesson: "FIRST_SEEN_BY_CLANK ≠ NEW_TO_MARKET. A live page, unseen URL, collection reshuffle, restock, or absence of Notebookcheck coverage does not establish novelty."
+clankops_consequence: "Measure editorial yield as discovered → actually new → not already covered → useful → article written. Freeze broad feature expansion until stale suppression, permanent feedback decisions, and story conversion materially improve."
+relationships:
+  - type: EXPLICIT
+    related_case_id: DB-002
+    note: Baseline/first-seen novelty cousin.
+  - type: EXPLICIT
+    related_case_id: DB-008
+    note: Historical discovery and freshness cousin.
+  - type: EXPLICIT
+    related_case_id: DB-007
+    note: Discovery coverage gap and Hall of Shame cousin.
+search_should_find:
+  - query: "Timex stale rediscovery first seen not new"
+    must_include_case: true
+  - query: "Cavatina Luxe genuine miss"
+    must_include_case: true
+  - query: "TW2Y12500 Snoopy Tennis stale"
+    must_include_case: true
+  - query: "TW2Y38700 Pan Am old product page"
+    must_include_case: true
+  - query: "Timex blog source coverage launch history"
+    must_include_case: true
+  - query: "discovered to article conversion"
+    must_include_case: true
+unresolved_questions:
+  - Exact first-party launch dates and coverage history should be attached as evidence for each SKU during remediation.
+  - Medion ERAZER classifications require separate exact-SKU chronology review only where their dismissals lacked dated evidence.
+sources_surveyed:
+  - "User report: Watch Clank Hall of Shame: Timex Novelty Failure Report"
+  - "Timex official Cavatina Luxe launch post (2026-08-11)"
+  - "Timex official product and collection surfaces for the listed SKUs"

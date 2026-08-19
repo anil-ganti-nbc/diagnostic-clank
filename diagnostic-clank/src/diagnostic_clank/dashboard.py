@@ -30,6 +30,8 @@ from clank_runtime.knowledge.store import DiagnosticKnowledgeStore
 from clank_runtime.registry.core import ClankRegistration, ClankRegistry
 from diagnostic_clank.paths import StatePaths
 
+MAX_REPORT_UPLOAD_BYTES = 25 * 1024 * 1024  # matches MAX_ATTACHMENT_BYTES -- no unbounded read of Content-Length
+
 # Known fleet Clank ids, seeded as registry identity metadata only -- this
 # has zero side effects on any other Clank's actual state. An owner can
 # still type/select "fleet-wide" or any registered id; the registry is
@@ -847,6 +849,9 @@ def serve(
                     length = int(self.headers.get("Content-Length", "0"))
                     if length <= 0:
                         self._json(400, {"error": "content_length_required"})
+                        return
+                    if length > MAX_REPORT_UPLOAD_BYTES:
+                        self._json(413, {"error": "payload_too_large", "max_bytes": MAX_REPORT_UPLOAD_BYTES})
                         return
                     body = self.rfile.read(length)
                     content_type = self.headers.get("Content-Type", "text/plain")

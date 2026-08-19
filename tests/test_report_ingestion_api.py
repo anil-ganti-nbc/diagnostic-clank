@@ -93,3 +93,35 @@ def test_http_api_returns_report_and_derived_findings(tmp_path: Path, monkeypatc
     finally:
         server.shutdown()
         store.close()
+
+
+def test_oversized_upload_is_rejected_without_reading_body(tmp_path: Path, monkeypatch):
+    """Regression: the upload endpoint must reject an oversized Content-Length
+    before calling self.rfile.read(length) -- an unbounded read on a claimed
+    length is a memory-exhaustion risk on a LAN-reachable endpoint."""
+    from diagnostic_clank.dashboard import MAX_REPORT_UPLOAD_BYTES
+
+    monkeypatch.setenv("DIAGNOSTIC_CLANK_HOME", str(tmp_path / "home"))
+    server, store = serve(resolve_state_paths(), port=0)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        req = urllib.request.Request(
+            f"http://127.0.0.1:{server.server_address[1]}/api/v1/reports",
+            data=b"x",
+            headers={
+                "Content-Type": "text/plain",
+                "Content-Length": str(MAX_REPORT_UPLOAD_BYTES + 1),
+            },
+            method="POST",
+        )
+        try:
+            urllib.request.urlopen(req, timeout=5)
+            raised = False
+        except urllib.error.HTTPError as exc:
+            raised = True
+            assert exc.code == 413
+        assert raised
+    finally:
+        server.shutdown()
+        store.close()

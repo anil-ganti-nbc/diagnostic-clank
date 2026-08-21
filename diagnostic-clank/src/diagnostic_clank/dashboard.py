@@ -10,7 +10,10 @@ rules live in clank_runtime.knowledge.store.DiagnosticKnowledgeStore.
 from __future__ import annotations
 
 import html
+import hmac
+import ipaddress
 import json
+import os
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -643,12 +646,25 @@ def render_file_inbox(store: DiagnosticKnowledgeStore, scan_summary: str = "") -
 def serve(
     paths: StatePaths, host: str = "127.0.0.1", port: int = 0
 ) -> tuple[HTTPServer, DiagnosticKnowledgeStore]:
+    try:
+        is_loopback = ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        is_loopback = host.lower() == "localhost"
+    if not is_loopback:
+        raise ValueError(
+            "Diagnostic Clank has no authenticated remote profile; dashboard host must be loopback"
+        )
     registry = build_registry()
     store = DiagnosticKnowledgeStore(
         paths.db_path, paths.evidence_dir, paths.quarantine_dir, registry
     )
 
     class Handler(BaseHTTPRequestHandler):
+        def _mutation_authorized(self) -> bool:
+            expected = os.environ.get("DIAGNOSTIC_CLANK_DASHBOARD_TOKEN", "")
+            supplied = self.headers.get("Authorization", "")
+            return bool(expected) and hmac.compare_digest(supplied, f"Bearer {expected}")
+
         def _html(self, status: int, body: str) -> None:
             data = body.encode("utf-8")
             self.send_response(status)
@@ -836,6 +852,9 @@ def serve(
             return fields, file_bytes, file_name
 
         def do_POST(self) -> None:
+            if not self._mutation_authorized():
+                self._json(403, {"error": "authenticated_mutation_required"})
+                return
             parsed = urlparse(self.path)
             path = parsed.path
             content_type = self.headers.get("Content-Type", "")

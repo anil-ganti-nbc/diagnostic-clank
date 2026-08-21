@@ -15,6 +15,7 @@ from diagnostic_clank.paths import default_state_root, resolve_state_paths
 @pytest.fixture
 def running_server(tmp_path, monkeypatch):
     monkeypatch.setenv("DIAGNOSTIC_CLANK_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("DIAGNOSTIC_CLANK_DASHBOARD_TOKEN", "test-dashboard-token")
     paths = resolve_state_paths()
     server, store = serve(paths=paths, port=0)
     port = server.socket.getsockname()[1]
@@ -43,7 +44,10 @@ def _get(port: int, path: str) -> tuple[int, str]:
 def _post(port: int, path: str, data: dict) -> tuple[int, str]:
     import urllib.parse
     body = urllib.parse.urlencode(data, doseq=True).encode("utf-8")
-    req = urllib.request.Request(f"http://127.0.0.1:{port}{path}", data=body, method="POST")
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}{path}", data=body, method="POST",
+        headers={"Authorization": "Bearer test-dashboard-token"},
+    )
     try:
         resp = urllib.request.urlopen(req, timeout=3)
         return resp.status, resp.read().decode("utf-8")
@@ -71,6 +75,23 @@ def test_server_binds_only_loopback(running_server):
         result = s.connect_ex(("127.0.0.1", port))
         assert result == 0
         s.close()
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.20", "::"])
+def test_server_rejects_non_loopback_bind(tmp_path, monkeypatch, host):
+    monkeypatch.setenv("DIAGNOSTIC_CLANK_HOME", str(tmp_path / "rejected"))
+    with pytest.raises(ValueError, match="must be loopback"):
+        serve(paths=resolve_state_paths(), host=host, port=0)
+
+
+def test_mutation_without_authentication_is_rejected(running_server):
+    port, _, _ = running_server
+    req = urllib.request.Request(
+        f"http://127.0.0.1:{port}/file-inbox/scan", data=b"", method="POST"
+    )
+    with pytest.raises(urllib.error.HTTPError) as exc:
+        urllib.request.urlopen(req, timeout=3)
+    assert exc.value.code == 403
 
 
 def test_dashboard_works_regardless_of_process_cwd(tmp_path, monkeypatch):

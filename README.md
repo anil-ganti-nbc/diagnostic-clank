@@ -1,5 +1,9 @@
 # Unified Clank Platform
 
+> **Phase 0: PROTOTYPE CONTROL PLANE — promotion frozen.** The canonical
+> 13-repository deployment ledger is `clank-fleet/inventories/fleet.yaml`;
+> unresolved deployment facts remain explicit `UNKNOWN` values.
+
 > **Status:** Stage 1A — Fleet foundation + OEM Radar & Feature Phone read-only adapters  
 > **No production behaviour. No deployment. No merge to main without review.**
 

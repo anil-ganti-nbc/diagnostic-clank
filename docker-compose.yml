@@ -15,7 +15,10 @@ services:
     container_name: diagnostic-clank-local
     restart: unless-stopped
     environment:
-      DIAGNOSTIC_CLANK_BIND_HOST: 0.0.0.0
+      # Phase 0: no authenticated remote dashboard profile exists. Binding to
+      # loopback intentionally makes this container a local health/inspection
+      # target only; published remote dashboard access is unsupported.
+      DIAGNOSTIC_CLANK_BIND_HOST: 127.0.0.1
       DIAGNOSTIC_CLANK_PORT: "8420"
     ports:
       - "127.0.0.1:8420:8420"

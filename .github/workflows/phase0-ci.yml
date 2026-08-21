@@ -62,6 +62,8 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      - name: Install Qt runtime library
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1
       - name: Clean locked installation
         run: |
           python -m pip install uv==0.11.32 build==1.2.2.post1 pyright==1.1.405

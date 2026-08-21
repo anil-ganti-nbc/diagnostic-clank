@@ -168,7 +168,7 @@ def test_no_secret_patterns() -> None:
                 and path.name not in {".env.example"}
             ):
                 continue
-            if any(x in path.parts for x in (".git", "__pycache__", ".pytest_cache")):
+            if any(x in path.parts for x in (".git", "__pycache__", ".pytest_cache", ".venv", "venv")):
                 continue
             try:
                 text = _read(path)

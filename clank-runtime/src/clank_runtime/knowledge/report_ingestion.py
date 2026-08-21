@@ -444,7 +444,7 @@ class ReportIngestionStore:
 
     def _lessons(self, report_id: str, chunk: tuple, rev: int) -> Iterable[tuple]:
         for match in re.finditer(
-            r"(?ms)^LESSON:\s*\n(.+?)(?=\n[A-Z][A-Z /_-]+:\s*\n|\n-{10,}|\Z)", chunk[6]
+            r"(?ms)^LESSON:[ \t]*\n(.+?)(?=\n[A-Z][A-Z /_-]+:[ \t]*\n|\n-{10,}|\Z)", chunk[6]
         ):
             yield (
                 str(uuid4()),

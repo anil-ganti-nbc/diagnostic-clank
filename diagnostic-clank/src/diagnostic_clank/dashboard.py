@@ -18,6 +18,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import IO, Any, cast
 from urllib.parse import parse_qs, urlparse
 
 from clank_runtime.knowledge.attachments import AttachmentQuarantined
@@ -832,7 +833,7 @@ def serve(
             ctype = self.headers.get("Content-Type", "")
             length = int(self.headers.get("Content-Length", "0"))
             fs = cgi.FieldStorage(
-                fp=self.rfile,
+                fp=cast(IO[Any], self.rfile),
                 headers=self.headers,
                 environ={
                     "REQUEST_METHOD": "POST",
@@ -1045,7 +1046,7 @@ def serve(
                     ),
                 )
 
-        def log_message(self, *_: object) -> None:
+        def log_message(self, format: str, *args: object) -> None:
             pass
 
     # Single-threaded on purpose: local single-user tool, and the shared

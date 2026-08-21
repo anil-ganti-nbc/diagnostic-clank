@@ -55,4 +55,3 @@ package and a human reviewer approves each failure-domain wave separately.
 - [ ] Set `promotion_eligible: true` only through a separate human-approved
       governance change after both waves pass. No script in this package changes
       that field or mutates a host.
-

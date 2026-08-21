@@ -26,4 +26,3 @@ operator gate. All entries are still draft PRs.
 `platform / windows` completed successfully. A human operator still must
 complete the separate native Task Scheduler evidence gate in
 `SEMINT_WINDOWS_VERIFICATION_RECORD.json`.
-

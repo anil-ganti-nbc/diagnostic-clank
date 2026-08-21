@@ -42,4 +42,3 @@ checkout and new evidence path. It is read-only and never reads file contents
 or environment variables. Keep scheduler exports and logs redacted. Do not
 connect to hosts, restart services, change schedulers, migrate data, rotate
 credentials, or delete old definitions as part of this checklist.
-

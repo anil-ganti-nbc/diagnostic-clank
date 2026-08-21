@@ -1,0 +1,87 @@
+schema_version: "2.0"
+as_of: "2026-08-21T08:01:44Z"
+inventory_status: INVENTORY_INCOMPLETE
+authority:
+  status: PROPOSED
+  control_plane_repository: https://github.com/anil-ganti-nbc/diagnostic-clank
+  governance_repository: https://github.com/anil-ganti-nbc/clank-architecture
+promotion_policy:
+  frozen: true
+  reason: Phase 0 engineering and operator gates are incomplete
+  policy: https://github.com/anil-ganti-nbc/clank-architecture/blob/main/NO_PROMOTION_POLICY.md
+
+expected_repositories:
+  - watch-clank
+  - diagnostic-clank
+  - clank-architecture
+  - smartwatch-clank
+  - korean-tech-wire
+  - feature-phone-clank
+  - unified-clank-platform
+  - tablet-clank
+  - chinese-tech-wire
+  - smartphone-clank
+  - semiconductor-intelligence
+  - free-game-tracker
+  - oem-radar
+
+# Repository identity is not deployment truth. A repository can have zero,
+# one, or many deployment instances. Until host evidence is collected the
+# deployment state remains the literal value UNKNOWN.
+repositories:
+  - {name: watch-clank, canonical_url: https://github.com/anil-ganti-nbc/watch-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: diagnostic-clank, canonical_url: https://github.com/anil-ganti-nbc/diagnostic-clank, classification: SUPPORTING_SYSTEM, deployment_state: UNKNOWN}
+  - {name: clank-architecture, canonical_url: https://github.com/anil-ganti-nbc/clank-architecture, classification: GOVERNANCE, deployment_state: NOT_APPLICABLE}
+  - {name: smartwatch-clank, canonical_url: https://github.com/anil-ganti-nbc/smartwatch-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: korean-tech-wire, canonical_url: https://github.com/anil-ganti-nbc/korean-tech-wire, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: feature-phone-clank, canonical_url: https://github.com/anil-ganti-nbc/feature-phone-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: unified-clank-platform, canonical_url: https://github.com/anil-ganti-nbc/unified-clank-platform, classification: SUPERSEDED_CANDIDATE, deployment_state: UNKNOWN}
+  - {name: tablet-clank, canonical_url: https://github.com/anil-ganti-nbc/tablet-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: chinese-tech-wire, canonical_url: https://github.com/anil-ganti-nbc/chinese-tech-wire, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: smartphone-clank, canonical_url: https://github.com/anil-ganti-nbc/smartphone-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: semiconductor-intelligence, canonical_url: https://github.com/anil-ganti-nbc/semiconductor-intelligence, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: free-game-tracker, canonical_url: https://github.com/anil-ganti-nbc/free-game-tracker, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: oem-radar, canonical_url: https://github.com/anil-ganti-nbc/oem-radar, classification: CLANK, deployment_state: UNKNOWN}
+
+# Operators add one explicit row per discovered process, service, container,
+# scheduler, notifier, database, or supporting runtime. Empty is honest: no
+# Hetzner or NAS instance has yet been evidenced from this repository.
+deployments: []
+
+# Failure-domain placeholders make the absence of host evidence explicit. They
+# are not discovered instances and must not be treated as deployment rows or
+# promotion evidence. Replace UNKNOWN values only with a reviewed, redacted
+# operator evidence bundle.
+deployment_facts:
+  - location_type: HETZNER
+    deployment_state: UNKNOWN
+    instance_id: UNKNOWN
+    failure_domain: UNKNOWN
+    location: UNKNOWN
+    host: UNKNOWN
+    deployed_commit_sha: UNKNOWN
+    artifact_digest: UNKNOWN
+    scheduler: UNKNOWN
+    database_path: UNKNOWN
+    evidence_path: UNKNOWN
+    backup_verification: UNKNOWN
+    heartbeat_freshness: UNKNOWN
+    rollback_artifact: UNKNOWN
+    evidence_bundle: UNKNOWN
+    promotion_eligible: false
+  - location_type: NAS
+    deployment_state: UNKNOWN
+    instance_id: UNKNOWN
+    failure_domain: UNKNOWN
+    location: UNKNOWN
+    host: UNKNOWN
+    deployed_commit_sha: UNKNOWN
+    artifact_digest: UNKNOWN
+    scheduler: UNKNOWN
+    database_path: UNKNOWN
+    evidence_path: UNKNOWN
+    backup_verification: UNKNOWN
+    heartbeat_freshness: UNKNOWN
+    rollback_artifact: UNKNOWN
+    evidence_bundle: UNKNOWN
+    promotion_eligible: false

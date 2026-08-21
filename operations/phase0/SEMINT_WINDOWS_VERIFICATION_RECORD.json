@@ -1,0 +1,86 @@
+{
+  "record_type": "SEMINT_PHASE0_WINDOWS_OPERATOR_EVIDENCE",
+  "schema_source": "https://github.com/anil-ganti-nbc/semiconductor-intelligence/blob/phase0/containment/scripts/phase0_windows_verify.py",
+  "repository": "semiconductor-intelligence",
+  "pull_request": "https://github.com/anil-ganti-nbc/semiconductor-intelligence/pull/3",
+  "candidate_head_sha": "c4d0cf0f73b9d61bf460339212739627d0a5f930",
+  "engineering_ci": {
+    "platform_windows_status": "COMPLETED",
+    "platform_windows_conclusion": "SUCCESS",
+    "checked_at_utc": "2026-08-21T08:01:44Z"
+  },
+  "execution_mode": "NON_EXECUTING_TEMPLATE",
+  "mutation_performed": false,
+  "gate": "OPEN",
+  "operator": "UNKNOWN",
+  "reviewer": "UNKNOWN",
+  "task_action": {
+    "execute": "UNKNOWN",
+    "arguments": "UNKNOWN",
+    "working_directory": "UNKNOWN",
+    "export_digest": "UNKNOWN"
+  },
+  "unattended_runs": [
+    {
+      "run_number": 1,
+      "task_instance_id": "UNKNOWN",
+      "triggered_at_utc": "UNKNOWN",
+      "last_task_result": "UNKNOWN",
+      "application_start_utc": "UNKNOWN",
+      "job_id": "UNKNOWN",
+      "job_status": "UNKNOWN",
+      "job_finished_at_utc": "UNKNOWN",
+      "database_commit_evidence": "UNKNOWN",
+      "success_heartbeat_before_utc": "UNKNOWN",
+      "success_heartbeat_after_utc": "UNKNOWN",
+      "source_freshness_utc": "UNKNOWN",
+      "notification_test_target": "UNKNOWN",
+      "notification_deduplication_key": "UNKNOWN",
+      "notification_result": "UNKNOWN",
+      "operator_triggered": "UNKNOWN"
+    },
+    {
+      "run_number": 2,
+      "task_instance_id": "UNKNOWN",
+      "triggered_at_utc": "UNKNOWN",
+      "last_task_result": "UNKNOWN",
+      "application_start_utc": "UNKNOWN",
+      "job_id": "UNKNOWN",
+      "job_status": "UNKNOWN",
+      "job_finished_at_utc": "UNKNOWN",
+      "database_commit_evidence": "UNKNOWN",
+      "success_heartbeat_before_utc": "UNKNOWN",
+      "success_heartbeat_after_utc": "UNKNOWN",
+      "source_freshness_utc": "UNKNOWN",
+      "notification_test_target": "UNKNOWN",
+      "notification_deduplication_key": "UNKNOWN",
+      "notification_result": "UNKNOWN",
+      "operator_triggered": "UNKNOWN"
+    }
+  ],
+  "negative_heartbeat_evidence": {
+    "PARTIAL": "UNKNOWN",
+    "FAILED": "UNKNOWN",
+    "NO_JOB_DUE": "UNKNOWN"
+  },
+  "broken_path_test": {
+    "isolated_task_name": "UNKNOWN",
+    "nonexistent_execute": "UNKNOWN",
+    "task_failure_result": "UNKNOWN",
+    "application_started": "UNKNOWN",
+    "success_heartbeat_changed": "UNKNOWN",
+    "independent_monitor": "UNKNOWN",
+    "monitor_rule_version": "UNKNOWN",
+    "independent_alert_id": "UNKNOWN",
+    "alert_delivery_utc": "UNKNOWN",
+    "redacted_log_reference": "UNKNOWN"
+  },
+  "required_attachments": [
+    "redacted Task Scheduler XML export",
+    "database query evidence for both unique committed jobs and heartbeat transitions",
+    "source-freshness and notification receipts for a non-production test target",
+    "event-log excerpt for the isolated broken-path task",
+    "independent monitor rule/version, alert ID, delivery UTC, and redacted logs"
+  ],
+  "final_disposition": "HOLD"
+}

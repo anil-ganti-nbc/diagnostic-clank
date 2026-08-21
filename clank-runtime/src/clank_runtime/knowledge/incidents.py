@@ -301,7 +301,7 @@ class IncidentStore:
                 "OR root_cause LIKE ? OR resolution LIKE ? LIMIT ?",
                 (like, like, like, like, limit),
             ).fetchall()
-            return [self.get(r["incident_id"]) for r in rows if self.get(r["incident_id"])]
+            return [inc for r in rows if (inc := self.get(r["incident_id"])) is not None]
         return [inc for r in rows if (inc := self.get(r["incident_id"])) is not None]
 
     # -- row mapping ----------------------------------------------------------

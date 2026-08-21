@@ -1,5 +1,9 @@
 # clank-fleet
 
+> **Phase 0 status:** prototype control plane. Production promotion is frozen;
+> see [`inventories/fleet.yaml`](inventories/fleet.yaml) for the authoritative
+> 13-repository ledger. `UNKNOWN` deployment facts are not evidence of health.
+
 Fleet control plane shell, API, and CLI for the Unified Clank Infrastructure.
 
 **Stage 0.5 — skeleton + hardening. No production behavior.**

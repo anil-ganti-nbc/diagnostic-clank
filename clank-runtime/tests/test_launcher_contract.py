@@ -3,6 +3,8 @@ from __future__ import annotations
 import os, subprocess, sys
 from pathlib import Path
 
+import pytest
+
 REPO = Path(__file__).resolve().parents[2]
 DC = REPO / "diagnostic-clank"
 PREFLIGHT = DC / "launcher" / "common" / "preflight.py"
@@ -15,6 +17,7 @@ def _env(home: Path) -> dict:
     env["DIAGNOSTIC_CLANK_HOME"] = str(home)
     env["PYTHONPATH"] = f"{REPO / 'clank-runtime' / 'src'}:{REPO / 'clank-desktop' / 'src'}:{env.get('PYTHONPATH','')}"
     env["DIAGNOSTIC_MODE"] = "preflight"
+    env["DIAGNOSTIC_PYTHON"] = sys.executable
     return env
 
 def test_launcher_files_exist():
@@ -31,6 +34,8 @@ def test_common_preflight_ok(tmp_path: Path):
     assert "overall: OK" in proc.stdout
 
 def test_linux_wrapper_preflight(tmp_path: Path):
+    if sys.platform == "win32":
+        pytest.skip("the POSIX wrapper contract is exercised on POSIX runners")
     home = tmp_path / "dc"; home.mkdir()
     proc = subprocess.run(["bash", str(LINUX), "preflight"], env=_env(home),
                           capture_output=True, text=True, cwd=str(REPO))
@@ -38,6 +43,8 @@ def test_linux_wrapper_preflight(tmp_path: Path):
     assert "overall: OK" in proc.stdout
 
 def test_macos_wrapper_same_contract(tmp_path: Path):
+    if sys.platform == "win32":
+        pytest.skip("the POSIX wrapper contract is exercised on POSIX runners")
     home = tmp_path / "dc"; home.mkdir()
     proc = subprocess.run(["bash", str(MACOS), "preflight"], env=_env(home),
                           capture_output=True, text=True, cwd=str(REPO))

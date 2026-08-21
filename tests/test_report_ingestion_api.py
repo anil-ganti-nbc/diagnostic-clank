@@ -70,7 +70,9 @@ def test_raw_hash_and_unknown_mapping_are_preserved(tmp_path: Path):
 
 
 def test_http_api_returns_report_and_derived_findings(tmp_path: Path, monkeypatch):
+    token = "phase0-test-token"
     monkeypatch.setenv("DIAGNOSTIC_CLANK_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("DIAGNOSTIC_CLANK_DASHBOARD_TOKEN", token)
     server, store = serve(resolve_state_paths(), port=0)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -79,7 +81,11 @@ def test_http_api_returns_report_and_derived_findings(tmp_path: Path, monkeypatc
         req = urllib.request.Request(
             f"http://127.0.0.1:{server.server_address[1]}/api/v1/reports",
             data=body,
-            headers={"Content-Type": "text/plain", "X-Source-Agent": "CODEX"},
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "text/plain",
+                "X-Source-Agent": "CODEX",
+            },
             method="POST",
         )
         with urllib.request.urlopen(req) as response:
@@ -101,7 +107,9 @@ def test_oversized_upload_is_rejected_without_reading_body(tmp_path: Path, monke
     length is a memory-exhaustion risk on a LAN-reachable endpoint."""
     from diagnostic_clank.dashboard import MAX_REPORT_UPLOAD_BYTES
 
+    token = "phase0-test-token"
     monkeypatch.setenv("DIAGNOSTIC_CLANK_HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("DIAGNOSTIC_CLANK_DASHBOARD_TOKEN", token)
     server, store = serve(resolve_state_paths(), port=0)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -112,6 +120,7 @@ def test_oversized_upload_is_rejected_without_reading_body(tmp_path: Path, monke
             headers={
                 "Content-Type": "text/plain",
                 "Content-Length": str(MAX_REPORT_UPLOAD_BYTES + 1),
+                "Authorization": f"Bearer {token}",
             },
             method="POST",
         )

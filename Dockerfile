@@ -1,7 +1,7 @@
 # Diagnostic Clank — local Archivist web service, portable container image.
 # Build context is the repo root (this file's directory) since the app
 # depends on two packages that live in sibling directories here.
-FROM python:3.12-slim-bookworm
+FROM python:3.12-slim-bookworm@sha256:a116514e19457bcb7af7efe9c3dd0b9b71e85b317694e7882a1c52aa15a78134
 
 # Full Git SHA of the source this image was built from -- passed at build
 # time (e.g. `--build-arg GIT_REVISION=$(git rev-parse HEAD)`, or via
@@ -30,9 +30,10 @@ RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin clank
 
 COPY clank-runtime ./clank-runtime
 COPY diagnostic-clank ./diagnostic-clank
+COPY requirements.container.lock ./requirements.container.lock
 
-RUN pip install --upgrade pip \
-    && pip install ./clank-runtime ./diagnostic-clank \
+RUN pip install --require-hashes -r requirements.container.lock \
+    && pip install --no-deps ./clank-runtime ./diagnostic-clank \
     && mkdir -p /app/data \
     && chown -R clank:clank /app
 

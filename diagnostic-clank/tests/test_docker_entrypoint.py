@@ -15,6 +15,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ENTRYPOINT = REPO_ROOT / "native" / "docker" / "entrypoint.py"
 RUNTIME_PATH = REPO_ROOT.parents[1] / "clank-runtime" / "src"
@@ -50,6 +52,7 @@ def _wait_for_healthz(port: int, timeout: float = 10.0) -> bool:
     return False
 
 
+@pytest.mark.skipif(os.name == "nt", reason="container SIGTERM lifecycle is POSIX-only")
 def test_entrypoint_binds_configured_host_and_port_and_shuts_down_cleanly(tmp_path):
     home = tmp_path / "dc-container-home"
     port = _free_port()

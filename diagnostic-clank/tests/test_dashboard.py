@@ -266,7 +266,7 @@ def test_file_inbox_scan_route_ingests_report(running_server, monkeypatch, tmp_p
     monkeypatch.setenv("CLANKOPS_REPORT_ROOT", str(report_root))
     report_root.joinpath("inbox").mkdir(parents=True)
     report = report_root / "inbox" / "gui-scan.md"
-    report.write_text("GUI scan report\n", encoding="utf-8")
+    report.write_bytes(b"GUI scan report\n")
     status, body = _post(port, "/file-inbox/scan", {})
     assert status == 200
     assert "ingested=1" in body

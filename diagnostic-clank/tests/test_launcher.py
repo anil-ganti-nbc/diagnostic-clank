@@ -43,6 +43,7 @@ def _wait_for_marker(home: Path, timeout: float = 10.0) -> dict | None:
     return None
 
 
+@pytest.mark.skipif(os.name == "nt", reason="Windows cannot deliver a catchable SIGTERM")
 def test_launcher_becomes_ready_and_shuts_down_cleanly(tmp_path):
     home = tmp_path / "dc-home"
     proc = _launch(home)

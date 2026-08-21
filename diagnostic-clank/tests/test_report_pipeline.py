@@ -113,12 +113,13 @@ def test_report_001_valid_ingest(isolated):
     assert result.outcomes[0].clankops is not None
     assert result.outcomes[0].clankops.project == "oem-radar"
     assert not (rp.inbox / path.name).exists()
-    assert any(p.name == path.name for p in rp.processed.iterdir())
+    processed = next(p for p in rp.processed.iterdir() if p.name == path.name)
     # raw preserved
     rec = store.inbox.get(result.outcomes[0].output_id)
     assert rec is not None
-    assert rec.raw_text_hash == text_hash(SAMPLE if SAMPLE.endswith("\n") else SAMPLE)
-    # submit adds trailing newline possibly
+    submitted_raw = processed.read_bytes().decode("utf-8")
+    assert rec.raw_text == submitted_raw
+    assert rec.raw_text_hash == text_hash(submitted_raw)
     assert "Beelink China PoC" in rec.raw_text
 
 

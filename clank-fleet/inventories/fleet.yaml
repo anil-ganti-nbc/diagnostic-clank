@@ -1,5 +1,5 @@
 schema_version: "2.0"
-as_of: "2026-08-21T00:00:00Z"
+as_of: "2026-08-21T08:01:44Z"
 inventory_status: INVENTORY_INCOMPLETE
 authority:
   status: PROPOSED
@@ -47,3 +47,41 @@ repositories:
 # scheduler, notifier, database, or supporting runtime. Empty is honest: no
 # Hetzner or NAS instance has yet been evidenced from this repository.
 deployments: []
+
+# Failure-domain placeholders make the absence of host evidence explicit. They
+# are not discovered instances and must not be treated as deployment rows or
+# promotion evidence. Replace UNKNOWN values only with a reviewed, redacted
+# operator evidence bundle.
+deployment_facts:
+  - location_type: HETZNER
+    deployment_state: UNKNOWN
+    instance_id: UNKNOWN
+    failure_domain: UNKNOWN
+    location: UNKNOWN
+    host: UNKNOWN
+    deployed_commit_sha: UNKNOWN
+    artifact_digest: UNKNOWN
+    scheduler: UNKNOWN
+    database_path: UNKNOWN
+    evidence_path: UNKNOWN
+    backup_verification: UNKNOWN
+    heartbeat_freshness: UNKNOWN
+    rollback_artifact: UNKNOWN
+    evidence_bundle: UNKNOWN
+    promotion_eligible: false
+  - location_type: NAS
+    deployment_state: UNKNOWN
+    instance_id: UNKNOWN
+    failure_domain: UNKNOWN
+    location: UNKNOWN
+    host: UNKNOWN
+    deployed_commit_sha: UNKNOWN
+    artifact_digest: UNKNOWN
+    scheduler: UNKNOWN
+    database_path: UNKNOWN
+    evidence_path: UNKNOWN
+    backup_verification: UNKNOWN
+    heartbeat_freshness: UNKNOWN
+    rollback_artifact: UNKNOWN
+    evidence_bundle: UNKNOWN
+    promotion_eligible: false

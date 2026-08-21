@@ -4,6 +4,19 @@ This package prepares operator evidence. It does not connect to a remote host,
 change a scheduler, update a checkout, run a migration, or delete data. The
 repository promotion freeze remains in force.
 
+## Operator-gate package
+
+- [`PR_HEADS.md`](PR_HEADS.md) records the 13 scoped draft PR URLs, heads, and
+  required-check status.
+- [`OPERATOR_INSTANCE_CHECKLIST.md`](OPERATOR_INSTANCE_CHECKLIST.md) is the
+  per-instance evidence checklist; the canonical ledger keeps Hetzner and NAS
+  placeholders explicitly `UNKNOWN` until evidence exists.
+- [`SEMINT_WINDOWS_VERIFICATION_RECORD.json`](SEMINT_WINDOWS_VERIFICATION_RECORD.json)
+  is the non-secret SemInt record for two unattended runs and the independent
+  broken-path alert.
+- [`POST_MERGE_HETZNER_NAS_CONVERGENCE.md`](POST_MERGE_HETZNER_NAS_CONVERGENCE.md)
+  separates the post-merge Hetzner and NAS waves and their rollback gates.
+
 ## 1. Preflight (read-only)
 
 Copy this repository to the explicitly approved target or run it from an

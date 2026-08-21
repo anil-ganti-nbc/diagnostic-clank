@@ -1,6 +1,6 @@
 # Phase 0 remediation PR heads
 
-Checked against GitHub at `2026-08-21T08:01:44Z`. These are the 13 scoped
+Checked against GitHub at `2026-08-21T08:07:29Z`. These are the 13 scoped
 Phase 0 remediation PRs; unrelated open PRs are intentionally omitted. Every
 required check reported `SUCCESS`. The `advisory / full-style-format` failure
 on code repositories is non-blocking and remains visible; it is not an
@@ -9,7 +9,7 @@ operator gate. All entries are still draft PRs.
 | Repository | PR | Head SHA | URL | Required CI | Engineering gate |
 |---|---:|---|---|---|---|
 | watch-clank | #7 | `48ae5200712260324b3805182ad56c1848a04f06` | https://github.com/anil-ganti-nbc/watch-clank/pull/7 | PASS | COMPLETE |
-| diagnostic-clank | #6 | `8017f86270a9bf5fbd9bf5a0393ca6d7997a76ef` | https://github.com/anil-ganti-nbc/diagnostic-clank/pull/6 | PASS | COMPLETE |
+| diagnostic-clank | #6 | `a2f8ab6625581388c92dc78bc885cf0682ed61e4` | https://github.com/anil-ganti-nbc/diagnostic-clank/pull/6 | PASS | COMPLETE |
 | clank-architecture | #2 | `c52456b9261246a203e4e392045db87f6bc82bbc` | https://github.com/anil-ganti-nbc/clank-architecture/pull/2 | PASS | COMPLETE |
 | smartwatch-clank | #16 | `5d7b92ae6412a61bf17e2b1f277f293b62869247` | https://github.com/anil-ganti-nbc/smartwatch-clank/pull/16 | PASS | COMPLETE |
 | korean-tech-wire | #4 | `d88787b57d24431b776fb53e811b13699b5c827b` | https://github.com/anil-ganti-nbc/korean-tech-wire/pull/4 | PASS | COMPLETE |

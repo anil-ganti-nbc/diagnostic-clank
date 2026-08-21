@@ -643,9 +643,7 @@ def render_file_inbox(store: DiagnosticKnowledgeStore, scan_summary: str = "") -
     return _shell("file-inbox", "File Inbox", body)
 
 
-def serve(
-    paths: StatePaths, host: str = "127.0.0.1", port: int = 0
-) -> tuple[HTTPServer, DiagnosticKnowledgeStore]:
+def require_loopback_host(host: str) -> None:
     try:
         is_loopback = ipaddress.ip_address(host).is_loopback
     except ValueError:
@@ -654,6 +652,12 @@ def serve(
         raise ValueError(
             "Diagnostic Clank has no authenticated remote profile; dashboard host must be loopback"
         )
+
+
+def serve(
+    paths: StatePaths, host: str = "127.0.0.1", port: int = 0
+) -> tuple[HTTPServer, DiagnosticKnowledgeStore]:
+    require_loopback_host(host)
     registry = build_registry()
     store = DiagnosticKnowledgeStore(
         paths.db_path, paths.evidence_dir, paths.quarantine_dir, registry

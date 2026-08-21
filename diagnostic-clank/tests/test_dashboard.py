@@ -8,7 +8,7 @@ import urllib.request
 
 import pytest
 
-from diagnostic_clank.dashboard import serve
+from diagnostic_clank.dashboard import require_loopback_host, serve
 from diagnostic_clank.paths import default_state_root, resolve_state_paths
 
 
@@ -77,11 +77,18 @@ def test_server_binds_only_loopback(running_server):
         s.close()
 
 
-@pytest.mark.parametrize("host", ["0.0.0.0", "192.168.1.20", "::"])
+@pytest.mark.parametrize(
+    "host", ["0.0.0.0", "192.168.1.20", "::", "not a host", "", "example.test"]
+)
 def test_server_rejects_non_loopback_bind(tmp_path, monkeypatch, host):
     monkeypatch.setenv("DIAGNOSTIC_CLANK_HOME", str(tmp_path / "rejected"))
     with pytest.raises(ValueError, match="must be loopback"):
         serve(paths=resolve_state_paths(), host=host, port=0)
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "::1", "localhost"])
+def test_loopback_host_validation_accepts_ipv4_ipv6_and_localhost(host):
+    require_loopback_host(host)
 
 
 def test_mutation_without_authentication_is_rejected(running_server):

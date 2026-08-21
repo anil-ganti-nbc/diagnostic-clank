@@ -1,12 +1,15 @@
-schema_version: "1.0"
-as_of: "2026-08-21"
+schema_version: "2.0"
+as_of: "2026-08-21T00:00:00Z"
+inventory_status: INVENTORY_INCOMPLETE
 authority:
-  control_plane_repository: anil-ganti-nbc/diagnostic-clank
-  governance_repository: anil-ganti-nbc/clank-architecture
+  status: PROPOSED
+  control_plane_repository: https://github.com/anil-ganti-nbc/diagnostic-clank
+  governance_repository: https://github.com/anil-ganti-nbc/clank-architecture
 promotion_policy:
   frozen: true
-  reason: Phase 0 containment gates are incomplete
+  reason: Phase 0 engineering and operator gates are incomplete
   policy: https://github.com/anil-ganti-nbc/clank-architecture/blob/main/NO_PROMOTION_POLICY.md
+
 expected_repositories:
   - watch-clank
   - diagnostic-clank
@@ -21,60 +24,26 @@ expected_repositories:
   - semiconductor-intelligence
   - free-game-tracker
   - oem-radar
-systems:
-  - &unknown_runtime
-    repository: anil-ganti-nbc/watch-clank
-    default_branch: main
-    source_sha: ef2800dc8f06918224295431db64cf42859c75e3
-    classification: UNVERIFIED_PRODUCTION
-    deployed_sha: UNKNOWN
-    artifact_digest: UNKNOWN
-    environment: UNKNOWN
-    deployment_owner: UNKNOWN
-    scheduler: {type: UNKNOWN, owner: UNKNOWN, identity: UNKNOWN}
-    database: {path: UNKNOWN, owner: UNKNOWN}
-    credentials_owner: UNKNOWN
-    notification: {target: UNKNOWN, authority: UNKNOWN}
-    backup: {location: UNKNOWN, restore_target: UNKNOWN, last_verified: UNKNOWN}
-    rollback_target: UNKNOWN
-    promotion_eligible: false
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/diagnostic-clank
-    default_branch: diagnostic-clank-2026-08
-    source_sha: 2ab77d397b16f290c24361c8a5363d70fde477e0
-    classification: PROTOTYPE
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/clank-architecture
-    source_sha: 084729a004068f1d86febff53117d26008a0f2fa
-    classification: PROTOTYPE
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/smartwatch-clank
-    source_sha: bf26394f14bb3fbadebf8ae03809ead96fb1b88b
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/korean-tech-wire
-    source_sha: b0190f2ec002c20adc723bc9716b197d46c09fef
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/feature-phone-clank
-    source_sha: 8690c495f1b072e0fbc112d17e0d9a27055f85e0
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/unified-clank-platform
-    source_sha: 2d269c6e2041df67d5939c9ab5dd3b6c9da3bb83
-    classification: PROTOTYPE
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/tablet-clank
-    source_sha: 1d3509b3cd042b0b55701d072512f5255f62a7df
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/chinese-tech-wire
-    source_sha: a3d696987125b45f5dbe4cebb5e3d9baf222758c
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/smartphone-clank
-    source_sha: 27c0a4d6535b4b648cbec0a4b64c54c1150aec1f
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/semiconductor-intelligence
-    source_sha: ba2e84106aa86ae97165b1cb65b77c65d537a040
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/free-game-tracker
-    source_sha: f9fd3784cee2a300e3e9c4f14e74ab1f3ee60404
-  - <<: *unknown_runtime
-    repository: anil-ganti-nbc/oem-radar
-    source_sha: 3a4d0a1658b69f39e5ef97c5b6760a7ae8638dfd
+
+# Repository identity is not deployment truth. A repository can have zero,
+# one, or many deployment instances. Until host evidence is collected the
+# deployment state remains the literal value UNKNOWN.
+repositories:
+  - {name: watch-clank, canonical_url: https://github.com/anil-ganti-nbc/watch-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: diagnostic-clank, canonical_url: https://github.com/anil-ganti-nbc/diagnostic-clank, classification: SUPPORTING_SYSTEM, deployment_state: UNKNOWN}
+  - {name: clank-architecture, canonical_url: https://github.com/anil-ganti-nbc/clank-architecture, classification: GOVERNANCE, deployment_state: NOT_APPLICABLE}
+  - {name: smartwatch-clank, canonical_url: https://github.com/anil-ganti-nbc/smartwatch-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: korean-tech-wire, canonical_url: https://github.com/anil-ganti-nbc/korean-tech-wire, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: feature-phone-clank, canonical_url: https://github.com/anil-ganti-nbc/feature-phone-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: unified-clank-platform, canonical_url: https://github.com/anil-ganti-nbc/unified-clank-platform, classification: SUPERSEDED_CANDIDATE, deployment_state: UNKNOWN}
+  - {name: tablet-clank, canonical_url: https://github.com/anil-ganti-nbc/tablet-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: chinese-tech-wire, canonical_url: https://github.com/anil-ganti-nbc/chinese-tech-wire, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: smartphone-clank, canonical_url: https://github.com/anil-ganti-nbc/smartphone-clank, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: semiconductor-intelligence, canonical_url: https://github.com/anil-ganti-nbc/semiconductor-intelligence, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: free-game-tracker, canonical_url: https://github.com/anil-ganti-nbc/free-game-tracker, classification: CLANK, deployment_state: UNKNOWN}
+  - {name: oem-radar, canonical_url: https://github.com/anil-ganti-nbc/oem-radar, classification: CLANK, deployment_state: UNKNOWN}
+
+# Operators add one explicit row per discovered process, service, container,
+# scheduler, notifier, database, or supporting runtime. Empty is honest: no
+# Hetzner or NAS instance has yet been evidenced from this repository.
+deployments: []

@@ -1,0 +1,3 @@
+# Reproducible builds
+
+Use Python 3.12. Verify `diagnostic-clank/uv.lock` with `(cd diagnostic-clank && uv lock --check)` and install container dependencies from `requirements.container.lock` with hash checking. Install the four local packages from a clean environment and build each into `dist/` with `python -m build --outdir dist PACKAGE`. Build the pinned-base container with `docker build --build-arg GIT_REVISION=FULL_40_CHAR_SHA -t diagnostic-clank:FULL_40_CHAR_SHA .`. The Phase 0 workflow records lock digests, a CycloneDX SBOM, package artifacts, and the Git SHA. Do not publish or promote the outputs.

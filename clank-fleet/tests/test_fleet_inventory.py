@@ -70,7 +70,35 @@ def test_missing_repository_is_inventory_incomplete() -> None:
 def test_unknown_deployment_is_never_healthy() -> None:
     report = validate_inventory(_load(), now=NOW)
     unknown = [item for item in report["findings"] if item["code"] == "UNKNOWN_DEPLOYMENT_STATE"]
-    assert len(unknown) == 12
+    # Phase 2A: host evidence (DEPLOYMENT_TRUTH_MANIFEST.md) verified ten repositories
+    # RUNNING on Hetzner. Only the two never-deployed platform repos remain UNKNOWN.
+    assert {item["subject"] for item in unknown} == {"diagnostic-clank", "unified-clank-platform"}
+
+
+def test_phase_2a_evidenced_deployments_are_present() -> None:
+    inventory = _load()
+    deployments = {row["instance_id"]: row for row in inventory["deployments"]}
+    # Every live lane discovered by read-only host inspection is represented.
+    expected_live = {
+        "watch-hetzner-user-timers-01",
+        "smartphone-hetzner-opt-timers-01",
+        "smartwatch-hetzner-cron-lane-01",
+        "fpc-hetzner-prod-cron-01",
+        "fpc-hetzner-experimental-cron-01",
+        "ktw-hetzner-soak-timer-01",
+        "ctw-hetzner-hourly-cron-01",
+        "oem-radar-hetzner-staging-cron-01",
+        "oem-radar-hetzner-bankai-exp-timer-01",
+        "semint-hetzner-hourly-cron-01",
+        "fgt-hetzner-hourly-cron-01",
+    }
+    assert expected_live <= set(deployments)
+    # The retired failing smartwatch systemd lane is recorded, disabled, never healthy.
+    retired = deployments["smartwatch-hetzner-soak-timer-retired"]
+    assert retired["deployment_state"] == "DISABLED"
+    assert retired["scheduler"]["enabled"] is False
+    # Freeze holds across every row.
+    assert all(row["promotion_eligible"] is False for row in deployments.values())
 
 
 def test_duplicate_scheduler_and_notification_authority_are_visible() -> None:

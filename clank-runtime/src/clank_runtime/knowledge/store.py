@@ -19,6 +19,15 @@ from pathlib import Path
 from clank_runtime.knowledge.attachments import Attachment, AttachmentQuarantined, AttachmentStore
 from clank_runtime.knowledge.clankops_record import CLANKOPSRecord, extract_clankops_record
 from clank_runtime.knowledge.inbox import AgentFamily, AgentOutputInbox, AgentOutputRecord, OutputType
+from clank_runtime.knowledge.dispositions import (  # ADR-0003 §4/§5
+    Disposition,
+    DispositionRecord,
+    RecommendationDispositionStore,
+    SelfVerificationError,
+    canonical_producer_identity,
+    ensure_disposition_tables,
+    transition_claim,
+)
 from clank_runtime.knowledge.incidents import (
     ClaimVerification,
     Incident,
@@ -50,6 +59,9 @@ class DiagnosticKnowledgeStore:
         self.reports = ReportIngestionStore(self.db_path, Path(evidence_dir) / "reports", self.registry)
         self._reports_con = sqlite3.connect(self.db_path, check_same_thread=False)
         self._reports_con.row_factory = sqlite3.Row
+        # ADR-0003 §4: append-only operator dispositions over the same DB file
+        ensure_disposition_tables(self._reports_con)
+        self.dispositions = RecommendationDispositionStore(self.inbox)
         self._reports_con.executescript(
             "CREATE VIRTUAL TABLE IF NOT EXISTS reports_fts USING fts5("
             "output_id UNINDEXED, raw_text, agent_family, primary_clank_id, output_type)"

@@ -288,6 +288,19 @@ class SmartphoneClankAdapter:
             con.close()
         return out
 
+    def eligible_count(self) -> dict[str, Any]:
+        """M4.5 coverage: timeline events a human could disposition."""
+        con = open_readonly(self.db_path)
+        if con is None or not table_exists(con, "timeline_events"):
+            return {"eligible_total": None}
+        try:
+            return {"eligible_total": con.execute(
+                "SELECT COUNT(*) FROM timeline_events").fetchone()[0]}
+        except sqlite3.Error:
+            return {"eligible_total": None}
+        finally:
+            con.close()
+
     def qc_records(self, *, limit: int = 1000) -> list[dict[str, Any]]:
         """Row-level human analyst actions (M4). Machine-scored
         confidence_ledger entries are deliberately EXCLUDED: they are not

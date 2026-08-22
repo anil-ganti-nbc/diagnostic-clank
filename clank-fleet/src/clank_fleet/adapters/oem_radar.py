@@ -204,6 +204,23 @@ class OemRadarAdapter:
             observed_at=now,
         )
 
+    def eligible_count(self) -> dict[str, Any]:
+        """M4.5 coverage: change events a human could review (alert_reviews)."""
+        con = open_readonly(self.db_path)
+        if con is None:
+            return {"eligible_total": None}
+        try:
+            table = "change_events" if table_exists(con, "change_events") else None
+            total = con.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] \
+                if table else None
+            reviewed = (con.execute("SELECT COUNT(*) FROM alert_reviews").fetchone()[0]
+                        if table_exists(con, "alert_reviews") else None)
+            return {"eligible_total": total, "reviewed_total": reviewed}
+        except sqlite3.Error:
+            return {"eligible_total": None}
+        finally:
+            con.close()
+
     def last_run(self) -> dict[str, Any] | None:
         con = open_readonly(self.db_path)
         if con is None:

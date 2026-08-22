@@ -322,6 +322,26 @@ class WatchClankAdapter:
         con.close()
         return out
 
+    def eligible_count(self) -> dict[str, Any]:
+        """M4.5 coverage: items a human COULD review, per Watch's own notion."""
+        con = open_readonly(self.db_path)
+        if con is None:
+            return {"eligible_total": None}
+        try:
+            out = {}
+            if table_exists(con, "events"):
+                out["events_total"] = con.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+            if table_exists(con, "specialist_leads"):
+                out["specialist_leads_total"] = con.execute(
+                    "SELECT COUNT(*) FROM specialist_leads").fetchone()[0]
+            out["eligible_total"] = sum(v for k, v in out.items()
+                                        if k.endswith("_total") and isinstance(v, int))
+            return out
+        except sqlite3.Error:
+            return {"eligible_total": None}
+        finally:
+            con.close()
+
     QC_TABLES = ("event_reviews", "specialist_lead_reviews")
 
     def qc_records(self, *, limit: int = 1000) -> list[dict[str, Any]]:

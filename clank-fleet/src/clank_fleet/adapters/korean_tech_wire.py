@@ -280,6 +280,19 @@ class KoreanTechWireAdapter:
             con.close()
         return out
 
+    def eligible_count(self) -> dict[str, Any]:
+        """M4.5 coverage: articles a human could give feedback on."""
+        con = open_readonly(self.db_path)
+        if con is None or not table_exists(con, "articles"):
+            return {"eligible_total": None}
+        try:
+            return {"eligible_total": con.execute(
+                "SELECT COUNT(*) FROM articles").fetchone()[0]}
+        except sqlite3.Error:
+            return {"eligible_total": None}
+        finally:
+            con.close()
+
     def qc_records(self, *, limit: int = 1000) -> list[dict[str, Any]]:
         """Row-level freeform article feedback (M4). The `outcome` value is
         freeform by design; it is preserved verbatim and fleet-normalization

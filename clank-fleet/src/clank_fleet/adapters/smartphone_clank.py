@@ -288,6 +288,37 @@ class SmartphoneClankAdapter:
             con.close()
         return out
 
+    def qc_records(self, *, limit: int = 1000) -> list[dict[str, Any]]:
+        """Row-level human analyst actions (M4). Machine-scored
+        confidence_ledger entries are deliberately EXCLUDED: they are not
+        human QC decisions."""
+        con = open_readonly(self.db_path)
+        if con is None or not table_exists(con, "analyst_actions"):
+            return []
+        out: list[dict[str, Any]] = []
+        try:
+            rows = fetchall(
+                con,
+                """
+                SELECT id AS original_record_id, action AS raw_disposition,
+                       target_type, target_id, actor_label, reason,
+                       before_state, after_state, created_at AS observed_at
+                FROM analyst_actions ORDER BY id LIMIT ?
+                """,
+                (limit,),
+            )
+            for row in rows:
+                rec = dict(row)
+                rec["source_table"] = "analyst_actions"
+                rec["subject_type"] = rec.get("target_type") or "unknown"
+                rec["subject_id"] = rec.pop("target_id", None)
+                out.append(rec)
+        except sqlite3.Error:
+            return out
+        finally:
+            con.close()
+        return out
+
     def timeline_taxonomy(self) -> dict[str, int] | None:
         con = open_readonly(self.db_path)
         if con is None or not table_exists(con, "timeline_events"):

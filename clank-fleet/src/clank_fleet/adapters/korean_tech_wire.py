@@ -280,6 +280,35 @@ class KoreanTechWireAdapter:
             con.close()
         return out
 
+    def qc_records(self, *, limit: int = 1000) -> list[dict[str, Any]]:
+        """Row-level freeform article feedback (M4). The `outcome` value is
+        freeform by design; it is preserved verbatim and fleet-normalization
+        happens only where explicitly defensible."""
+        con = open_readonly(self.db_path)
+        if con is None or not table_exists(con, "article_feedback"):
+            return []
+        try:
+            rows = fetchall(
+                con,
+                """
+                SELECT id AS original_record_id, outcome AS raw_disposition,
+                       article_id AS subject_id, note, created_at AS observed_at
+                FROM article_feedback ORDER BY id LIMIT ?
+                """,
+                (limit,),
+            )
+            out = []
+            for row in rows:
+                rec = dict(row)
+                rec["source_table"] = "article_feedback"
+                rec["subject_type"] = "article"
+                out.append(rec)
+            return out
+        except sqlite3.Error:
+            return []
+        finally:
+            con.close()
+
     def qc_summary(self) -> dict[str, Any] | None:
         summary = self.article_summary()
         if "feedback_rows" not in summary:

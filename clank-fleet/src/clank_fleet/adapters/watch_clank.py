@@ -322,6 +322,49 @@ class WatchClankAdapter:
         con.close()
         return out
 
+    QC_TABLES = ("event_reviews", "specialist_lead_reviews")
+
+    def qc_records(self, *, limit: int = 1000) -> list[dict[str, Any]]:
+        """Row-level human QC decisions (M4 corpus ingestion).
+
+        Read-only; verbatim dispositions; corrections surface as separate
+        rows flagged by upstream `is_corrected` plus updated_at."""
+        con = open_readonly(self.db_path)
+        if con is None:
+            return []
+        out: list[dict[str, Any]] = []
+        try:
+            for table in self.QC_TABLES:
+                if not table_exists(con, table):
+                    continue
+                cols = _columns(con, table)
+                subject_col = ("specialist_lead_id" if table == "specialist_lead_reviews"
+                               else "event_id")
+                sel = [f"id AS original_record_id", f"{subject_col} AS subject_id",
+                       "disposition AS raw_disposition",
+                       "reviewed_at AS observed_at"]
+                for optional, alias in (("updated_at", "updated_at"),
+                                        ("is_corrected", "is_corrected"),
+                                        ("event_type", "subject_type_extra"),
+                                        ("provenance_url", "provenance_url"),
+                                        ("reference_canonical", "reference"),
+                                        ("manufacturer", "manufacturer"),
+                                        ("region", "region")):
+                    if optional in cols:
+                        sel.append(f"{optional} AS {alias}")
+                sql = f"SELECT {', '.join(sel)} FROM {table} ORDER BY id LIMIT ?"
+                for row in fetchall(con, sql, (limit,)):
+                    rec = dict(row)
+                    rec["source_table"] = table
+                    rec["subject_type"] = ("specialist_lead" if table == "specialist_lead_reviews"
+                                           else "event")
+                    out.append(rec)
+        except sqlite3.Error:
+            return out
+        finally:
+            con.close()
+        return out
+
     def qc_summary(self) -> dict[str, Any] | None:
         summary = self.event_summary()
         if not summary:

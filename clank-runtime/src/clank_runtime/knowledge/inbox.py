@@ -17,6 +17,7 @@ class OutputType(StrEnum):
     AUDIT = "audit"; HANDOFF = "handoff"; RESEARCH = "research"; SOURCE_RESEARCH = "source_research"
     FIX_REPORT = "fix_report"; DEPLOYMENT_REPORT = "deployment_report"; SOAK_REPORT = "soak_report"
     FAILURE_REPORT = "failure_report"; GENERAL_NOTE = "general_note"
+    RECOMMENDATION = "recommendation"  # ADR-0003 §2: Motherclank M3 advisory output
 
 class ClaimVerification(StrEnum):
     REPORTED = "reported"; CORROBORATED = "corroborated"; VERIFIED = "verified"
@@ -41,6 +42,10 @@ class AgentOutputRecord(BaseModel):
     related_git_revision: str | None = None
     misc_source: str | None = None
     ingestion_status: str = "stored"
+    # ADR-0003 §2: logical recommendation identity (Motherclank recommendation_id).
+    # Content dedup (raw_text_hash) is NOT identity; changed content under one
+    # external_ref forms an immutable version series.
+    external_ref: str | None = None
 
 class ExtractedClaim(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -64,6 +69,12 @@ CREATE TABLE IF NOT EXISTS agent_claims (
 );
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
+
+# ADR-0003 §2: additive v1 -> v2 migration. Pre-existing rows read as
+# external_ref = NULL. raw_text_hash semantics are untouched.
+MIGRATIONS: dict[str, str] = {
+    "2": "ALTER TABLE agent_outputs ADD COLUMN external_ref TEXT;",
+}
 _SHA_RE = re.compile(r"\b([0-9a-f]{7,40})\b", re.I)
 
 class AgentOutputInbox:
@@ -75,7 +86,36 @@ class AgentOutputInbox:
         self._con.row_factory = sqlite3.Row
         self._con.executescript(SCHEMA)
         self._con.execute("INSERT OR IGNORE INTO meta(key,value) VALUES('schema_version','1')")
+        self._apply_migrations()
         self._con.commit()
+
+    def _apply_migrations(self) -> None:
+        """ADR-0003 §2: additive, forward-only schema migrations.
+
+        A v1 database is migrated to v2 in place; a fresh database created
+        from SCHEMA already carries every column, so migrations are applied
+        idempotently by probing for the column's existence.
+        """
+        row = self._con.execute(
+            "SELECT value FROM meta WHERE key='schema_version'"
+        ).fetchone()
+        current = int(row["value"]) if row else 1
+        for version in sorted(MIGRATIONS, key=int):
+            if int(version) <= current:
+                continue
+            # Idempotence probe: skip if the migration's column already exists
+            # (fresh DBs built from SCHEMA include it while meta still says 1).
+            if "ADD COLUMN external_ref" in MIGRATIONS[version]:
+                cols = {r[1] for r in self._con.execute("PRAGMA table_info(agent_outputs)")}
+                if "external_ref" in cols:
+                    self._con.execute(
+                        "UPDATE meta SET value=? WHERE key='schema_version'", (version,)
+                    )
+                    continue
+            self._con.executescript(MIGRATIONS[version])
+            self._con.execute(
+                "UPDATE meta SET value=? WHERE key='schema_version'", (version,)
+            )
 
     def close(self) -> None:
         self._con.close()
@@ -91,12 +131,18 @@ class AgentOutputInbox:
              output_type: OutputType = OutputType.GENERAL_NOTE,
              related_clank_ids: list[str] | None = None, misc_source: str | None = None,
              session_label: str | None = None, related_diagnostic_case_id: str | None = None,
+             external_ref: str | None = None,
              _duplicate_of: list[str] | None = None) -> AgentOutputRecord:
         """Content-hash deduplicated: re-saving identical raw_text returns the
         existing canonical record instead of inserting a second copy. The
         duplicate attempt is still observable via _duplicate_of (an
         operational log list the caller may append to), never silently lost,
-        but never becomes a second canonical evidence row either."""
+        but never becomes a second canonical evidence row either.
+
+        ADR-0003 §2.1/§2.2: raw_text_hash dedup is CONTENT dedup only.
+        Logical recommendation identity travels in external_ref; changed
+        content under the same external_ref inserts a NEW immutable row
+        (a version series), never an update."""
         if not raw_text.strip():
             raise ValueError("empty_output")
         existing = self.find_by_hash(text_hash(raw_text))
@@ -114,6 +160,7 @@ class AgentOutputInbox:
             related_clank_ids=list(related_clank_ids or []), output_type=output_type,
             raw_text=raw_text, raw_text_hash=text_hash(raw_text), misc_source=misc_source,
             session_label=session_label, related_diagnostic_case_id=related_diagnostic_case_id,
+            external_ref=external_ref,
         )
         shas = _SHA_RE.findall(raw_text)
         if shas:
@@ -121,11 +168,12 @@ class AgentOutputInbox:
         self._con.execute(
             """INSERT INTO agent_outputs (output_id,created_at,agent_family,primary_clank_id,
                related_clank_ids_json,output_type,raw_text,raw_text_hash,related_diagnostic_case_id,
-               related_git_revision,misc_source,session_label)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+               related_git_revision,misc_source,session_label,external_ref)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (rec.output_id, rec.created_at.isoformat(), rec.agent_family.value, rec.primary_clank_id,
              json.dumps(rec.related_clank_ids), rec.output_type.value, rec.raw_text, rec.raw_text_hash,
-             rec.related_diagnostic_case_id, rec.related_git_revision, rec.misc_source, rec.session_label),
+             rec.related_diagnostic_case_id,
+             rec.related_git_revision, rec.misc_source, rec.session_label, rec.external_ref),
         )
         self._con.commit()
         for line in raw_text.splitlines():
@@ -165,7 +213,20 @@ class AgentOutputInbox:
             raw_text_hash=row["raw_text_hash"], related_diagnostic_case_id=row["related_diagnostic_case_id"],
             related_git_revision=row["related_git_revision"], misc_source=row["misc_source"],
             session_label=row["session_label"],
+            external_ref=row["external_ref"] if "external_ref" in row.keys() else None,
         )
+
+    def latest_by_external_ref(self, external_ref: str) -> AgentOutputRecord | None:
+        """ADR-0003 §2.2: canonical version = latest persisted record for the
+        ref under the deterministic order (created_at, output_id). The Inbox
+        has no monotonic insertion identity; created_at stays provenance
+        metadata, this ordering is only a total order over persisted rows."""
+        rows = self._con.execute(
+            """SELECT * FROM agent_outputs WHERE external_ref=?
+               ORDER BY created_at ASC, output_id ASC""",
+            (external_ref,),
+        ).fetchall()
+        return self._row(rows[-1]) if rows else None
 
     def assert_raw_roundtrip(self, output_id: str, original: str) -> None:
         rec = self.get(output_id)

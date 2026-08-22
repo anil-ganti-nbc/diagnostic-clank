@@ -47,13 +47,31 @@ def _parse_dt(value: Any) -> datetime | None:
 
 
 def _map_run_status(status: str | None) -> SourceHealthStatus:
+    """Shared vocabulary across adapters (M1.5).
+
+    Maps each fleet's native run-status words onto the shared health enum.
+    Unmapped values stay UNKNOWN — mapping may never upgrade ambiguous or
+    unrecognized evidence to OK.
+
+    Fleet vocabularies covered:
+    - feature-phone : ok / failed / error / blocked_zero_result
+    - smartphone    : success / degraded (+ ok legacy)
+    - watch         : SUCCESS / PARTIAL / FAILURE-class strings (case-insensitive)
+    """
     raw = (status or "unknown").lower()
     return {
+        # canonical + feature-phone
         "ok": SourceHealthStatus.OK,
-        "blocked_zero_result": SourceHealthStatus.BLOCKED_ZERO,
         "failed": SourceHealthStatus.FAILED,
         "error": SourceHealthStatus.FAILED,
+        "blocked_zero_result": SourceHealthStatus.BLOCKED_ZERO,
         "degraded": SourceHealthStatus.DEGRADED,
+        # smartphone-clank native vocabulary
+        "success": SourceHealthStatus.OK,
+        # watch-clank native vocabulary (source_component_states)
+        "partial": SourceHealthStatus.DEGRADED,
+        "zero_items": SourceHealthStatus.ZERO_ITEMS,
+        "blocked": SourceHealthStatus.BLOCKED_ZERO,
     }.get(raw, SourceHealthStatus.UNKNOWN)
 
 

@@ -122,13 +122,14 @@ class SmartphoneClankAdapter:
                 rows = fetchall(
                     con,
                     """
-                    SELECT collector_name, source_name, status, started_at, finished_at,
-                           candidates_found, meaningful_changes
-                    FROM collector_run_metrics
-                    WHERE id IN (
-                        SELECT MAX(id) FROM collector_run_metrics GROUP BY collector_name
+                    SELECT m.collector_name, m.source_name, m.status, m.started_at, m.finished_at,
+                           m.candidates_found, m.meaningful_changes
+                    FROM collector_run_metrics m
+                    WHERE m.finished_at = (
+                        SELECT MAX(m2.finished_at) FROM collector_run_metrics m2
+                        WHERE m2.collector_name = m.collector_name
                     )
-                    ORDER BY collector_name
+                    ORDER BY m.collector_name
                     """,
                 )
                 for row in rows:
@@ -183,9 +184,12 @@ class SmartphoneClankAdapter:
         if con is None or not table_exists(con, "collector_run_metrics"):
             return None
         try:
+            # M1.5: id is a UUID string — lexicographic order is meaningless and
+            # once selected an Aug-18 row while the true latest ran today.
+            # Order by the real run timestamp instead (NULLs sort last on DESC).
             row = con.execute(
                 "SELECT id, collector_name AS source_id, status, started_at, finished_at, run_reason "
-                "FROM collector_run_metrics ORDER BY id DESC LIMIT 1"
+                "FROM collector_run_metrics ORDER BY finished_at DESC LIMIT 1"
             ).fetchone()
             return dict(row) if row else None
         except sqlite3.Error:
@@ -204,7 +208,7 @@ class SmartphoneClankAdapter:
                 """
                 SELECT id, collector_name, status, started_at, finished_at,
                        candidates_found, meaningful_changes, alerts_sent, run_reason
-                FROM collector_run_metrics ORDER BY id DESC LIMIT ?
+                FROM collector_run_metrics ORDER BY finished_at DESC, id DESC LIMIT ?
                 """,
                 (limit,),
             )

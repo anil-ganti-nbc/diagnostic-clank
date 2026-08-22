@@ -176,18 +176,31 @@ class WatchClankAdapter:
         assert con is not None
         try:
             if table_exists(con, "source_component_states"):
-                cols = _columns(con, "source_component_states")
-                ident = "source_id" if "source_id" in cols else "id"
-                rows = fetchall(con, f"SELECT * FROM source_component_states ORDER BY {ident}")
+                # Real Watch health substrate (M1.5): last_status carries the
+                # post-remediation vocabulary SUCCESS/ZERO_ITEMS/BLOCKED with
+                # block-streak and backoff evidence.
+                rows = fetchall(
+                    con,
+                    """
+                    SELECT source_id, last_status, last_success_at, last_blocked_at,
+                           consecutive_blocks, backoff_until, last_item_count
+                    FROM source_component_states ORDER BY source_id
+                    """,
+                )
                 for row in rows:
-                    keys = row.keys()
-                    status_raw = row["health"] if "health" in keys else row["state"] if "state" in keys else None
+                    raw = row["last_status"]
+                    reason_parts = [f"last_status={raw}"]
+                    if row["consecutive_blocks"]:
+                        reason_parts.append(f"consecutive_blocks={row['consecutive_blocks']}")
+                    if row["backoff_until"]:
+                        reason_parts.append(f"backoff_until={row['backoff_until']}")
                     sources.append(
                         SourceHealthEntry(
-                            source_id=str(row[ident]),
-                            status=_map_run_status(status_raw),
-                            observed_count=row.get("observation_count") if "observation_count" in keys else None,
-                            health_reason=status_raw,
+                            source_id=str(row["source_id"]),
+                            status=_map_run_status(raw),
+                            last_success_at=_parse_dt(row["last_success_at"]),
+                            observed_count=row["last_item_count"],
+                            health_reason=" ".join(reason_parts),
                         )
                     )
             elif table_exists(con, "collector_runs"):

@@ -1,5 +1,5 @@
 schema_version: '2.0'
-as_of: '2026-08-22T22:00:00Z'
+as_of: '2026-08-22T22:30:00Z'
 inventory_status: INVENTORY_INCOMPLETE
 authority:
   status: ACTIVE
@@ -126,6 +126,8 @@ deployments:
     last_job_status: SUCCESSFUL
     heartbeat_stale_after_seconds: UNKNOWN
   rollback_artifact: prior image tags retained on host
+  adapter_onboarding: 'Phase 2C: WatchClankAdapter onboarded (read-only). Exposed: last_run(status/started/completed), telemetry(observation_count,is_baseline), event_summary(events_total/by_status), QC
+    dispositions(event+lead reviews), schema revision. delivery_accounting=False (not persisted by Watch -> null).'
 - failure_domain: hetzner-fleet
   location_type: HETZNER
   location: hel1
@@ -175,6 +177,8 @@ deployments:
     last_job_status: SUCCESSFUL
     heartbeat_stale_after_seconds: UNKNOWN
   rollback_artifact: UNKNOWN
+  adapter_onboarding: 'Phase 2C: SmartphoneClankAdapter onboarded. Exposed: collector_run_metrics health substrate, timeline taxonomy, webhook_deliveries vs alerts (generation-vs-delivery), rejected_candidates/confidence_ledger/analyst_actions
+    QC counts, alembic revision.'
 - failure_domain: hetzner-fleet
   location_type: HETZNER
   location: hel1
@@ -322,6 +326,7 @@ deployments:
     last_job_status: SUCCESSFUL
     heartbeat_stale_after_seconds: UNKNOWN
   rollback_artifact: .deployed-id mechanism documented in repo README
+  adapter_onboarding: FeaturePhoneAdapter present since Stage 1A; Phase 2C revalidated against real staging-volume DB copy.
 - failure_domain: hetzner-fleet
   location_type: HETZNER
   location: hel1
@@ -469,6 +474,8 @@ deployments:
     last_job_status: SUCCESSFUL
     heartbeat_stale_after_seconds: UNKNOWN
   rollback_artifact: UNKNOWN
+  adapter_onboarding: 'Phase 2C: KoreanTechWireAdapter onboarded. Exposed: source lifecycle (EXPERIMENTAL/PRODUCTION), per-source run-health with recency-honest mapping (blocked streak != healthy-by-history),
+    article throughput + feedback rows. Event/delivery capabilities unsupported BY POLICY.'
 - failure_domain: hetzner-fleet
   location_type: HETZNER
   location: hel1

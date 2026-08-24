@@ -51,7 +51,7 @@ def _parse_dt(value: Any) -> Any:
         from datetime import datetime
 
         dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
-        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     except ValueError:
         return None
 

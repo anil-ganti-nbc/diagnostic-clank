@@ -306,3 +306,60 @@ class OemRadarAdapter:
             }
             for s in health.sources
         ]
+
+    def capability_states(self) -> dict[str, dict[str, str]]:
+        """v0.2 evidence-bearing capability states (never bare booleans)."""
+        db_present = self.db_path.exists()
+        con = open_readonly(self.db_path) if db_present else None
+        outbox = False
+        change_events = False
+        reviews = False
+        if con is not None:
+            try:
+                outbox = table_exists(con, "notification_outbox")
+                change_events = table_exists(con, "change_events")
+                reviews = table_exists(con, "alert_reviews")
+            finally:
+                con.close()
+        return {
+            "collection": {
+                "state": "active" if db_present else "unknown_or_unverified",
+                "evidence": f"crawler_runs substrate, store "
+                            f"{'present' if db_present else 'absent'}",
+            },
+            "health": {
+                "state": "active",
+                "evidence": "latest crawler run per source_key; unexpected "
+                            "zero encoded in status/errors, never healthy-zero",
+            },
+            "events": {
+                "state": "active" if change_events else "unknown_or_unverified",
+                "evidence": "change_events table "
+                            + ("present" if change_events else "not observed"),
+            },
+            "delivery": {
+                "state": "supported_unconfigured" if outbox
+                         else "unknown_or_unverified",
+                "evidence": "notification_outbox "
+                            + ("present: generation vs delivery tracked "
+                               "separately" if outbox else "not observed"),
+            },
+            "qc": {
+                "state": "active" if reviews else "unknown_or_unverified",
+                "evidence": "alert_reviews table "
+                            + ("present" if reviews else "not observed"),
+            },
+            "scheduler_trace": {
+                "state": "supported_unconfigured",
+                "evidence": "P-4 trace plane consumes probe records when present",
+            },
+            "continuity": {
+                "state": "active",
+                "evidence": "no destructive incident recorded for this lane; "
+                            "CONTIGUOUS unless registry says otherwise",
+            },
+            "survivability": {
+                "state": "unknown_or_unverified",
+                "evidence": "no backup evidence records registered for this lane",
+            },
+        }

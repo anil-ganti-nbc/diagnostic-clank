@@ -164,10 +164,18 @@ class SmartwatchClankAdapter:
         warnings: list[str] = []
         try:
             if table_exists(con, "collector_health"):
+                # Latest row per collector when history accumulates
+                # (checked_at); a single-row-per-collector store behaves
+                # identically. Never emit duplicate collectors - M1 rollups
+                # would double-count them.
                 rows = fetchall(
                     con,
-                    "SELECT collector, healthy, observed_count, warning, error, "
-                    "checked_at FROM collector_health ORDER BY collector")
+                    "SELECT c.collector, c.healthy, c.observed_count, "
+                    "c.warning, c.error, c.checked_at FROM collector_health c "
+                    "WHERE c.checked_at = (SELECT MAX(c2.checked_at) "
+                    "FROM collector_health c2 "
+                    "WHERE c2.collector = c.collector) "
+                    "ORDER BY c.collector")
                 for row in rows:
                     mapped = _map_healthy(row["healthy"])
                     sources.append(SourceHealthEntry(
@@ -247,6 +255,86 @@ class SmartwatchClankAdapter:
                     "finished_at": None, "status": None, "run_kind": None}
         finally:
             con.close()
+
+    def recent_runs(self, *, limit: int = 20) -> dict[str, Any]:
+        """Ordered recent runs (newest first) with the schema's own two-
+        valued healthy flag. Substrate for downstream streak/zero-item
+        analysis; this adapter derives no streak semantics itself."""
+        con = open_readonly(self.db_path)
+        if con is None:
+            return {"supported": False, "runs": [],
+                    "reason": "database missing"}
+        try:
+            if not table_exists(con, "runs"):
+                return {"supported": False, "runs": [],
+                        "reason": "runs table absent"}
+            rows = fetchall(
+                con,
+                "SELECT id, collector, started_at, finished_at, healthy, "
+                "observation_count, warning, error FROM runs "
+                "ORDER BY finished_at DESC LIMIT ?", (limit,))
+            runs = [{
+                "run_id": str(r["id"]),
+                "collector": r["collector"],
+                "started_at": r["started_at"],
+                "finished_at": r["finished_at"],
+                "healthy": bool(r["healthy"]),
+                "observation_count": r["observation_count"],
+                "warning": r["warning"],
+                "error": r["error"],
+            } for r in rows]
+            return {"supported": True, "count": len(runs), "runs": runs,
+                    "note": ("baseline/run-kind unsupported: no such column "
+                             "in this schema")}
+        except sqlite3.Error as exc:
+            return {"supported": False, "runs": [], "reason": str(exc)}
+        finally:
+            con.close()
+
+    def capability_states(self) -> dict[str, dict[str, str]]:
+        """v0.2 evidence-bearing capability states (never bare booleans)."""
+        db_present = self.db_path.exists()
+        return {
+            "collection": {
+                "state": "active" if db_present else "unknown_or_unverified",
+                "evidence": f"store {'present' if db_present else 'absent'}: "
+                            f"{self.db_path}",
+            },
+            "health": {
+                "state": "active",
+                "evidence": "collector_health table (latest row per collector)",
+            },
+            "events": {
+                "state": "unsupported_by_policy",
+                "evidence": "no event/change substrate in observed schema",
+            },
+            "delivery": {
+                "state": "unsupported_by_policy",
+                "evidence": "no notification/outbox substrate in observed schema",
+            },
+            "qc": {
+                "state": "unknown_or_unverified",
+                "evidence": "no QC tables observed in mapped subset of schema",
+            },
+            "scheduler_trace": {
+                "state": "supported_unconfigured",
+                "evidence": "P-4 trace plane consumes probe records when present",
+            },
+            "continuity": {
+                "state": "active",
+                "evidence": "epoch/continuity carried by Motherclank registries "
+                            "(sw-epoch-1-restored lineage; known gap 08-18..08-22)",
+            },
+            "survivability": {
+                "state": "supported_unconfigured",
+                "evidence": "ACT-011 recovery point verified; recurring "
+                            "automation not yet installed",
+            },
+            "baseline_run_kind": {
+                "state": "unsupported_by_policy",
+                "evidence": "no baseline/run-kind column exists in this schema",
+            },
+        }
 
     def schema_revision(self) -> int | str | None:
         con = open_readonly(self.db_path)

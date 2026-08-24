@@ -45,6 +45,31 @@ class SmartphoneClankAdapter:
         self.clank_version = clank_version
         self.release_channel = release_channel
 
+    def capability_states(self) -> dict[str, dict[str, str]]:
+        return {
+            "collection": {"state": "active",
+                           "evidence": "collector runs + candidate pipeline"},
+            "health": {"state": "active",
+                       "evidence": "source health + extraction counters"},
+            "events": {"state": "active",
+                       "evidence": "timeline taxonomy substrate"},
+            "delivery": {"state": "active",
+                         "evidence": "webhook_deliveries persisted per alert "
+                                     "decision; generation vs delivery "
+                                     "separate"},
+            "qc": {"state": "active",
+                   "evidence": "analyst actions ledger + qc_summary"},
+            "scheduler_trace": {"state": "supported_unconfigured",
+                                "evidence": "P-4 trace plane when probe "
+                                            "records exist"},
+            "continuity": {"state": "active",
+                           "evidence": "epoch semantics carried by "
+                                       "continuity registry"},
+            "survivability": {"state": "unknown_or_unverified",
+                              "evidence": "no backup evidence records "
+                                          "registered for this lane"},
+        }
+
     def identity(self) -> AdapterDescriptor:
         try:
             channel = ReleaseChannel(self.release_channel)

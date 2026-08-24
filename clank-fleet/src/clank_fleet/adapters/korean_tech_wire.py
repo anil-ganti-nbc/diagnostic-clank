@@ -46,6 +46,30 @@ class KoreanTechWireAdapter:
         self.clank_version = clank_version
         self.release_channel = release_channel
 
+    def capability_states(self) -> dict[str, dict[str, str]]:
+        return {
+            "collection": {"state": "active",
+                           "evidence": "article throughput + source_run_health"},
+            "health": {"state": "active",
+                       "evidence": "per-source run health with due-gating"},
+            "events": {"state": "unsupported_by_policy",
+                       "evidence": "collection-only intelligence system by "
+                                   "explicit editorial policy"},
+            "delivery": {"state": "unsupported_by_policy",
+                         "evidence": "no alerts by editorial policy"},
+            "qc": {"state": "active",
+                   "evidence": "feedback rows via qc_records/qc_summary"},
+            "scheduler_trace": {"state": "supported_unconfigured",
+                                "evidence": "systemd timer; P-4 trace plane "
+                                            "when probe records exist"},
+            "continuity": {"state": "active",
+                           "evidence": "epoch semantics carried by "
+                                       "continuity registry"},
+            "survivability": {"state": "unknown_or_unverified",
+                              "evidence": "no backup evidence records "
+                                          "registered for this lane"},
+        }
+
     def identity(self) -> AdapterDescriptor:
         try:
             channel = ReleaseChannel(self.release_channel)

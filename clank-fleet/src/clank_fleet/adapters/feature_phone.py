@@ -87,6 +87,35 @@ class FeaturePhoneAdapter:
         self.clank_version = clank_version
         self.release_channel = release_channel
 
+    def capability_states(self) -> dict[str, dict[str, str]]:
+        return {
+            "collection": {"state": "active",
+                           "evidence": "HMD listings/sitemap observations, "
+                                       "append-only"},
+            "health": {"state": "active",
+                       "evidence": "blocked_zero_result + collector run "
+                                   "metrics"},
+            "events": {"state": "active",
+                       "evidence": "deterministic change-event diffing"},
+            "delivery": {"state": "supported_undeployed",
+                         "evidence": "durable outbox exists in code but was "
+                                     "absent from the deployed revision at "
+                                     "snapshot time (v0.2 §3 specimen)"},
+            "qc": {"state": "unknown_or_unverified",
+                   "evidence": "no review substrate observed in mapped "
+                               "schema subset"},
+            "scheduler_trace": {"state": "supported_unconfigured",
+                                "evidence": "prod cron; P-4 trace plane when "
+                                            "probe records exist"},
+            "continuity": {"state": "active",
+                           "evidence": "fpc-epoch-2 hard boundary carried by "
+                                       "continuity registry"},
+            "survivability": {"state": "active",
+                              "evidence": "ACT-011 epoch-2 recovery point: "
+                                          "restore-verified; durable off-host "
+                                          "still unproven"},
+        }
+
     def identity(self) -> AdapterDescriptor:
         try:
             channel = ReleaseChannel(self.release_channel)

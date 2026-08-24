@@ -47,6 +47,33 @@ class WatchClankAdapter:
 
     # -- identity -----------------------------------------------------------
 
+    def capability_states(self) -> dict[str, dict[str, str]]:
+        db_present = self.db_path.exists()
+        return {
+            "collection": {"state": "active",
+                           "evidence": "observation ledger substrate"},
+            "health": {"state": "active",
+                       "evidence": "per-source health substrate"},
+            "events": {"state": "active",
+                       "evidence": "event lane with FIRST_SEEN_BY_CLANK vs "
+                                   "market-novelty taxonomy"},
+            "delivery": {"state": "unknown_or_unverified",
+                         "evidence": "Discord sends are fire-and-forget; "
+                                     "not persisted (adapter contract)"},
+            "qc": {"state": "active",
+                   "evidence": "review/lead dispositions with correction "
+                               "lineage"},
+            "scheduler_trace": {"state": "supported_unconfigured",
+                                "evidence": "P-4 trace plane when probe "
+                                            "records exist"},
+            "continuity": {"state": "active",
+                           "evidence": "epoch semantics carried by "
+                                       "continuity registry"},
+            "survivability": {"state": "unknown_or_unverified",
+                              "evidence": "no backup evidence records "
+                                          "registered for this lane"},
+        }
+
     def identity(self) -> AdapterDescriptor:
         try:
             channel = ReleaseChannel(self.release_channel)

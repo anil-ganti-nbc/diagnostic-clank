@@ -4,11 +4,10 @@ ONE machine-readable contract for adapter capability statements. Adapters
 emit ``CapabilityState`` values with an evidence reference; Motherclank
 validates against this enum and preserves UNKNOWN verbatim - never coercing.
 
-Serialized values are lowercase strings; existing adapter-plane
-capability_states() emitters already use these exact spellings, so
-adoption is additive with no migration coercion. Historical serialized
-evidence remains historical: unknown legacy values are reported, never
-rewritten.
+Serialized values are lowercase strings; the first emitting adapters already
+use these exact spellings, so adoption is additive with no migration
+coercion. Historical serialized evidence remains historical: unknown legacy
+values are reported, never rewritten.
 """
 
 from __future__ import annotations

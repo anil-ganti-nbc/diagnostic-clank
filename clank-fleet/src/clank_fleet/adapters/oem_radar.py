@@ -258,14 +258,11 @@ class OemRadarAdapter:
                 "FROM crawler_runs ORDER BY id DESC LIMIT ?",
                 (limit,),
             )
-            delivery_pending = 0
-            if table_exists(con, "notification_outbox"):
-                try:
-                    delivery_pending = con.execute(
-                        "SELECT COUNT(*) FROM notification_outbox WHERE status='pending'"
-                    ).fetchone()[0]
-                except sqlite3.Error:
-                    delivery_pending = 0
+            delivery_counts = self.delivery_summary()
+            delivery_ext = {}
+            if delivery_counts.get("supported"):
+                delivery_ext["delivery_status_counts"] = \
+                    delivery_counts.get("by_status", {})
             for row in rows:
                 status_raw = (row["status"] or "unknown").lower()
                 mapped = {
@@ -282,9 +279,9 @@ class OemRadarAdapter:
                         finished_at=_parse_dt(row["finished_at"]),
                         run_kind=RunKind.NORMAL_RUN,
                         source_status=mapped,
-                        delivery_count=None if delivery_pending is None else None,
+                        delivery_count=None,
                         extensions={
-                            "delivery_pending_total": delivery_pending,
+                            **delivery_ext,
                             "stats_json_present": bool(row["stats_json"]),
                         },
                     )
@@ -307,16 +304,41 @@ class OemRadarAdapter:
             for s in health.sources
         ]
 
+    def delivery_summary(self) -> dict[str, Any]:
+        """Real production substrate is the ``notifications`` table (verified
+        live: statuses sent/suppressed). Exposes ONLY what GROUP BY status
+        proves - generation (change_events) and delivery are independent
+        claims; a change_event is never inferred to be delivered."""
+        con = open_readonly(self.db_path)
+        if con is None:
+            return {"supported": False, "by_status": {},
+                    "reason": "database missing"}
+        try:
+            if not table_exists(con, "notifications"):
+                return {"supported": False, "by_status": {},
+                        "reason": "notifications table absent"}
+            rows = fetchall(
+                con, "SELECT status, COUNT(*) AS n FROM notifications "
+                     "GROUP BY status ORDER BY status")
+            by_status = {str(r["status"] or "unknown"): r["n"] for r in rows}
+            return {"supported": True, "by_status": by_status,
+                    "note": ("status vocabulary is whatever production "
+                             "writes; no change_event-to-delivery inference")}
+        except sqlite3.Error as exc:
+            return {"supported": False, "by_status": {}, "reason": str(exc)}
+        finally:
+            con.close()
+
     def capability_states(self) -> dict[str, dict[str, str]]:
         """v0.2 evidence-bearing capability states (never bare booleans)."""
         db_present = self.db_path.exists()
         con = open_readonly(self.db_path) if db_present else None
-        outbox = False
+        notifications = False
         change_events = False
         reviews = False
         if con is not None:
             try:
-                outbox = table_exists(con, "notification_outbox")
+                notifications = table_exists(con, "notifications")
                 change_events = table_exists(con, "change_events")
                 reviews = table_exists(con, "alert_reviews")
             finally:
@@ -338,11 +360,10 @@ class OemRadarAdapter:
                             + ("present" if change_events else "not observed"),
             },
             "delivery": {
-                "state": "supported_unconfigured" if outbox
-                         else "unknown_or_unverified",
-                "evidence": "notification_outbox "
-                            + ("present: generation vs delivery tracked "
-                               "separately" if outbox else "not observed"),
+                "state": "active" if notifications else "unknown_or_unverified",
+                "evidence": "notifications table (status counts: "
+                            "sent/suppressed observed live); generation and "
+                            "delivery remain independent claims",
             },
             "qc": {
                 "state": "active" if reviews else "unknown_or_unverified",

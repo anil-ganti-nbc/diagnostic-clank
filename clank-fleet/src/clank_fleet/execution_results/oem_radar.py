@@ -32,6 +32,7 @@ core/runner.py, verified against the deployed implementation):
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 from typing import Any
 
 EXTRACTOR_ID = "oem-radar/done-line"
@@ -42,6 +43,48 @@ _DONE_RE = re.compile(
     r"(\d+)[ \t]+snapshot\(s\),[ \t]*(\d+)[ \t]+event\(s\)",
     re.MULTILINE,
 )
+
+#: One cron log line per invocation, emitted before any per-source work -
+#: the reliable per-invocation start marker in OEM Radar's cron log output
+#: (verified against the deployed cron log format, 2026-08-24).
+INVOCATION_MARKER = re.compile(
+    r"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}),\d+ .*acquired run lock")
+
+
+def locate_invocation_block(log_text: str, invoked_at_iso: str,
+                            *, tolerance_seconds: float = 180) -> str | None:
+    """Extract the text block for ONE scheduler invocation from a day's
+    accumulated cron log, by matching each block's own embedded logger
+    timestamp against the scheduler's invocation time.
+
+    The probe/host layer supplies the raw log text and the invocation
+    timestamp (from its own scheduler evidence, e.g. journalctl); this
+    function owns the OEM-specific knowledge of what marks one invocation's
+    start and how the two clocks (cron's fork time vs the container's first
+    log line) may drift. Returns None when no block matches within
+    ``tolerance_seconds`` - never guesses which of several blocks applies.
+    """
+    try:
+        inv_dt = datetime.fromisoformat(invoked_at_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    lines = log_text.splitlines()
+    starts = [i for i, ln in enumerate(lines) if INVOCATION_MARKER.match(ln)]
+    if not starts:
+        return None
+    best_idx = None
+    best_delta = None
+    for i in starts:
+        m = INVOCATION_MARKER.match(lines[i])
+        block_dt = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(
+            tzinfo=UTC)
+        delta = abs((block_dt - inv_dt).total_seconds())
+        if delta <= tolerance_seconds and (best_delta is None or delta < best_delta):
+            best_idx, best_delta = i, delta
+    if best_idx is None:
+        return None
+    end_idx = next((i for i in starts if i > best_idx), len(lines))
+    return "\n".join(lines[best_idx:end_idx])
 
 
 class OemRadarExecutionExtractor:

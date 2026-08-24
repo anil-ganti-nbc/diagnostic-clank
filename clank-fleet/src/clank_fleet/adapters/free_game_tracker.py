@@ -234,6 +234,9 @@ class FreeGameTrackerAdapter:
                 "finished_at": latest,
                 "started_at": None,
                 "run_kind": None,   # no baseline/run-kind concept in FGT
+                # P-4.3 semantic-clock label: this is a DERIVED activity
+                # timestamp (MAX over source_health), not a native run row
+                "clock": "DERIVED_ACTIVITY_MAX",
                 "derived_from": "MAX(source_health.last_attempt_at)",
             }
         except sqlite3.Error as exc:

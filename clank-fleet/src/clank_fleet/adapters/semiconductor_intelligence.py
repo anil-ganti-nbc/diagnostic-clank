@@ -23,6 +23,8 @@ envelopes (generic fleet-wide type; not named after any participant).
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -367,27 +369,10 @@ class SemiconductorIntelligenceAdapter:
 
     # -- domain substrate (observed, never adjudicated) --------------------
 
-    def claims_summary(self) -> dict[str, Any]:
-        """Participant-native assertion counts by status. These are SI
-        domain facts, NOT Motherclank truth judgments."""
-        con = open_readonly(self.db_path)
-        if con is None or not table_exists(con, "claims"):
-            return {"available": False, "by_status": {}}
-        try:
-            rows = fetchall(con, "SELECT status, COUNT(*) AS n FROM claims "
-                                 "GROUP BY status ORDER BY status")
-            by_status = {(r["status"] or "unknown").lower(): r["n"]
-                         for r in rows}
-            total = sum(by_status.values())
-            return {"available": True, "total_claims": total,
-                    "by_status": by_status,
-                    "note": ("participant-native claim statuses; confidence "
-                             "values are participant-native 0..1 floats and "
-                             "are NOT observer truth judgments")}
-        except sqlite3.Error as exc:
-            return {"available": False, "by_status": {}, "reason": str(exc)}
-        finally:
-            con.close()
+    # claims_summary() REMOVED (P-4.4.1): intelligence_assertion@1
+    # envelopes + generic evidence consumer now provide assertion_summary
+    # through the canonical pipeline. Two competing semantic paths would
+    # violate the single-pipeline principle.
 
     def schema_revision(self) -> str | None:
         con = open_readonly(self.db_path)
@@ -399,6 +384,75 @@ class SemiconductorIntelligenceAdapter:
             return row[0] if row else None
         except sqlite3.Error:
             return None
+        finally:
+            con.close()
+
+    def evidence_envelopes(self) -> list[dict[str, Any]]:
+        """Typed intelligence_assertion@1 envelopes from participant Claims.
+
+        Semantic clock decision: ``occurred_at`` = claims.updated_at.
+        This represents the most recent state transition of the assertion,
+        which is the semantically correct "when did this claim last mean
+        what it currently means" timestamp. Creation time would lose
+        subsequent status/confidence changes; resolution time only exists
+        for resolved claims. updated_at is the participant's own marker
+        for "this is the state I am asserting NOW".
+
+        Native confidence (0..1 float) preserved verbatim as
+        PARTICIPANT-NATIVE; never interpreted as observer truth judgment.
+
+        Zero claims → empty list. No synthetic envelopes, no errors, no
+        fabricated UNKNOWN assertions.
+        """
+        if not self.db_path.exists():
+            return []
+        con = open_readonly(self.db_path)
+        if con is None:
+            return []
+        try:
+            if not table_exists(con, "claims"):
+                return []
+            rows = fetchall(
+                con,
+                "SELECT id, statement, status, confidence, created_at,"
+                " updated_at FROM claims ORDER BY updated_at DESC")
+            from datetime import datetime, timezone
+
+            observed_at = datetime.now(UTC).isoformat(timespec="seconds")
+            envelopes = []
+            for r in rows:
+                payload = {
+                    "assertion_ref": f"claims/{r['id']}",
+                    "status": (r["status"] or "unknown").lower(),
+                    "occurred_at": r["updated_at"],
+                    "native_confidence": r["confidence"],
+                }
+                env: dict[str, Any] = {
+                    "evidence_spec": 1,
+                    "evidence_type": "intelligence_assertion",
+                    "evidence_version": 1,
+                    "subject": {"clank_id": CLANK_ID},
+                    "observed_at": observed_at,
+                    "occurred_at": r["updated_at"],
+                    "substrate": f"sqlite:{self.db_path.name}:claims",
+                    "payload": payload,
+                    "provenance": {
+                        "query": ("SELECT id, statement, status, confidence,"
+                                  " created_at, updated_at FROM claims"),
+                        "participant_table": "claims",
+                        "participant_pk": str(r["id"]),
+                    },
+                }
+                blob = json.dumps(
+                    {k: v for k, v in env.items() if k != "content_hash"},
+                    sort_keys=True, separators=(",", ":"), default=str)
+                import hashlib
+                env["content_hash"] = "sha256:" + hashlib.sha256(
+                    blob.encode()).hexdigest()
+                envelopes.append(env)
+            return envelopes
+        except sqlite3.Error:
+            return []
         finally:
             con.close()
 

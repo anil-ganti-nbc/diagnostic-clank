@@ -103,7 +103,87 @@ class SemiconductorIntelligenceAdapter:
             supports_local_fallback=False,
         )
 
-    # -- execution substrate (native provider_runs) ------------------------
+    # -- execution substrate (two distinct native planes) ------------------
+    #
+    # P-4.4: the live deployment proved these are DIFFERENT planes:
+    #   operational_job_runs -> application-level scheduled job execution
+    #                          (OperationalScheduler; trigger_type records
+    #                          whether the scheduler fired)
+    #   provider_runs        -> provider-collection attempt execution
+    #                          (may legitimately be EMPTY forever when the
+    #                          only configured source is manual)
+    # Neither is derived from the other. Both are exposed separately.
+
+    _JOB_STATUS_MAP = {
+        "successful": SourceHealthStatus.OK,
+        "partial": SourceHealthStatus.DEGRADED,
+        "failed": SourceHealthStatus.FAILED,
+    }
+
+    def job_runs_recent(self, *, limit: int = 20) -> dict[str, Any]:
+        """Native application-level scheduled job runs (newest first)."""
+        con = open_readonly(self.db_path)
+        if con is None:
+            return {"supported": False, "runs": [], "reason": "database missing"}
+        try:
+            if not table_exists(con, "operational_job_runs"):
+                return {"supported": False, "runs": [],
+                        "reason": "operational_job_runs table absent"}
+            rows = fetchall(
+                con,
+                "SELECT id, job_type, trigger_type, started_at, finished_at,"
+                " status, attempt_number, error_summary FROM "
+                "operational_job_runs "
+                "ORDER BY COALESCE(finished_at, started_at) DESC LIMIT ?",
+                (limit,))
+            runs = [{
+                "run_id": str(r["id"]),
+                "job_type": r["job_type"],
+                "trigger_type": r["trigger_type"],
+                "started_at": r["started_at"],
+                "finished_at": r["finished_at"],
+                "status": (r["status"] or "unknown").lower(),
+                "attempt_number": r["attempt_number"],
+                "error_summary": r["error_summary"],
+            } for r in rows]
+            return {"supported": True, "count": len(runs), "runs": runs,
+                    "clock": "native_operational_job_run"}
+        except sqlite3.Error as exc:
+            return {"supported": False, "runs": [], "reason": str(exc)}
+        finally:
+            con.close()
+
+    def provider_collection_summary(self) -> dict[str, Any]:
+        """Provider-collection plane summary. Empty by design when every
+        configured source is manual/polling-disabled - that is
+        configuration truth, not breakage."""
+        con = open_readonly(self.db_path)
+        if con is None:
+            return {"available": False}
+        try:
+            runs_present = table_exists(con, "provider_runs")
+            sources_state = None
+            if table_exists(con, "sources"):
+                row = con.execute(
+                    "SELECT COUNT(*) AS total, "
+                "SUM(CASE WHEN polling_enabled THEN 1 ELSE 0 END) AS on_ "
+                "FROM sources").fetchone()
+                sources_state = {"total": row["total"] or 0,
+                                 "polling_enabled": row["on_"] or 0}
+            latest = None
+            if runs_present:
+                r = con.execute(
+                    "SELECT MAX(COALESCE(finished_at, started_at)) AS m "
+                    "FROM provider_runs").fetchone()
+                latest = r["m"] if r else None
+            return {"available": True, "runs_present": bool(runs_present),
+                    "latest_activity": latest,
+                    "sources": sources_state,
+                    "note": ("empty provider plane with zero polling-enabled "
+                             "sources is legitimate manual-only "
+                             "configuration")}
+        finally:
+            con.close()
 
     def health(self) -> HealthPayload:
         now = datetime.now(UTC)
@@ -142,6 +222,18 @@ class SemiconductorIntelligenceAdapter:
                     ))
             else:
                 warnings.append("provider_runs table absent")
+
+            # P-4.4: detect manual-only configuration while connection is
+            # still open. Empty provider plane + zero polling-enabled
+            # sources = legitimate configuration, not breakage.
+            if table_exists(con, "sources"):
+                src_row = con.execute(
+                    "SELECT COUNT(*) AS total, "
+                    "SUM(CASE WHEN polling_enabled THEN 1 ELSE 0 END) AS on_ "
+                    "FROM sources").fetchone()
+                if (src_row["total"] or 0) > 0 and \
+                        (src_row["on_"] or 0) == 0:
+                    warnings.append("__MANUAL_ONLY_SOURCE_CONFIG__")
         except sqlite3.Error as exc:
             warnings.append(f"execution query issue: {exc}")
         finally:
@@ -150,8 +242,13 @@ class SemiconductorIntelligenceAdapter:
         failed = sum(1 for s in sources if s.status == SourceHealthStatus.FAILED)
         overall = OperationalState.HEALTHY
         if not sources:
-            overall = OperationalState.WARNING
-            warnings.append("no provider_runs rows recorded")
+            if any("__MANUAL_ONLY_SOURCE_CONFIG__" in w for w in warnings):
+                overall = OperationalState.HEALTHY
+                warnings.append("no provider_runs rows: manual-only source "
+                                "configuration - legitimate")
+            else:
+                overall = OperationalState.WARNING
+                warnings.append("no provider_runs rows recorded")
         elif failed == len(sources):
             overall = OperationalState.FAILED
         elif failed:
@@ -192,44 +289,76 @@ class SemiconductorIntelligenceAdapter:
         )
 
     def last_run(self) -> dict[str, Any]:
-        """Latest NATIVE provider pass. Clock: native_run_row."""
+        """Freshest NATIVE execution evidence with the substrate chosen
+        deterministically - never whichever table happens to have rows.
+
+        Primary substrate: operational_job_runs (application-level scheduled
+        execution - the plane the scheduler cadence measures).
+        Secondary: provider_runs (collection attempts), used only when the
+        job plane has no table/rows, and then EXPLICITLY labeled as a
+        fallback so no consumer mistakes it for job execution.
+        """
         con = open_readonly(self.db_path)
         if con is None:
             return {"supported": False, "reason": "database missing",
                     "finished_at": None, "status": None, "run_kind": None}
         try:
-            if not table_exists(con, "provider_runs"):
-                return {"supported": False, "reason": "provider_runs absent",
-                        "finished_at": None, "status": None, "run_kind": None}
-            row = con.execute(
-                "SELECT id, provider, source_id, started_at, finished_at,"
-                " items_collected, duplicates_skipped, status, error "
-                "FROM provider_runs "
-                "ORDER BY COALESCE(finished_at, started_at) DESC LIMIT 1"
-            ).fetchone()
-            if not row:
-                return {"supported": True, "reason": "no rows",
-                        "finished_at": None, "status": None, "run_kind": None}
-            status_raw = (row["status"] or "unknown").lower()
-            return {
-                "supported": True,
-                "run_id": str(row["id"]),
-                "source_id": f"provider[{row['provider']}]",
-                "started_at": row["started_at"],
-                "finished_at": row["finished_at"],
-                "status": ("ok" if status_raw == "ok"
-                           else "failed" if status_raw == "failed"
-                           else status_raw),
-                "clock": "native_run_row",
-                "items_collected": row["items_collected"],
-                "duplicates_skipped": row["duplicates_skipped"],
-                "error": row["error"],
-                # zero collected is a legitimate maintenance/no-work pass:
-                # never inferred as failure from count alone
-                "zero_items_note": ("items_collected=0 may be a legitimate "
-                                    "maintenance pass"),
-                "run_kind": None,
-            }
+            job_row = None
+            if table_exists(con, "operational_job_runs"):
+                job_row = con.execute(
+                    "SELECT id, job_type, trigger_type, started_at,"
+                    " finished_at, status, attempt_number, error_summary "
+                    "FROM operational_job_runs "
+                    "ORDER BY COALESCE(finished_at, started_at) DESC LIMIT 1"
+                ).fetchone()
+            if job_row is not None:
+                status_raw = (job_row["status"] or "unknown").lower()
+                return {
+                    "supported": True,
+                    "run_id": str(job_row["id"]),
+                    "source_id": f"job[{job_row['job_type']}]",
+                    "started_at": job_row["started_at"],
+                    "finished_at": job_row["finished_at"],
+                    "status": status_raw,
+                    "clock": "native_operational_job_run",
+                    "substrate": "operational_job_runs",
+                    "trigger_type": (job_row["trigger_type"] or "unknown"),
+                    "attempt_number": job_row["attempt_number"],
+                    "error_summary": job_row["error_summary"],
+                    "provider_plane": self.provider_collection_summary(),
+                    # zero collected items is legitimate on either plane;
+                    # never inferred as failure from counts alone
+                    "zero_items_note": ("zero work may be legitimate due to "
+                                        "due-gating/manual configuration"),
+                    "run_kind": None,
+                }
+            # Fallback plane, visibly labeled as fallback:
+            if table_exists(con, "provider_runs"):
+                row = con.execute(
+                    "SELECT id, provider, started_at, finished_at,"
+                    " items_collected, status, error FROM provider_runs "
+                    "ORDER BY COALESCE(finished_at, started_at) DESC LIMIT 1"
+                ).fetchone()
+                if row:
+                    return {
+                        "supported": True,
+                        "run_id": str(row["id"]),
+                        "source_id": f"provider[{row['provider']}]",
+                        "started_at": row["started_at"],
+                        "finished_at": row["finished_at"],
+                        "status": ((row["status"] or "unknown").lower()),
+                        "clock": "native_provider_run",
+                        "substrate": "provider_runs",
+                        "fallback": True,
+                        "fallback_note": ("job-plane absent; provider-run "
+                                          "recency used as execution "
+                                          "evidence"),
+                        "items_collected": row["items_collected"],
+                        "error": row["error"],
+                        "run_kind": None,
+                    }
+            return {"supported": True, "reason": "no rows",
+                    "finished_at": None, "status": None, "run_kind": None}
         except sqlite3.Error as exc:
             return {"supported": False, "reason": str(exc),
                     "finished_at": None, "status": None, "run_kind": None}
@@ -290,7 +419,7 @@ class SemiconductorIntelligenceAdapter:
                            "evidence": f"provider_runs substrate, store "
                                        f"{'present' if db_present else 'absent'}"},
             "health": {"state": "active",
-                       "evidence": "latest provider pass per provider"},
+                       "evidence": "application plane: operational_job_runs; provider plane: latest pass per provider"},
             "events": {"state": "active" if has_claims
                        else "unknown_or_unverified",
                        "evidence": "claims/assertions are the native subject "

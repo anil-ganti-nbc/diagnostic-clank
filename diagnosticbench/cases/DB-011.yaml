@@ -1,0 +1,73 @@
+case_id: DB-011
+title: OEM Radar hit falsely dismissed from sibling-model evidence
+affected_clank: oem-radar
+related_clanks: [fleet-wide]
+period: "2026-08-18"
+incident_family: editorial_novelty_triage
+evidence_status: CONFIRMED_L_CONFIRMED_FIX
+confidence: high
+raw_evidence_requirements:
+  - kind: owner_note
+    source_agent: owner
+    must_preserve_verbatim: true
+    notes: Incident sequence and quoted GPT triage reasoning.
+  - kind: audit_excerpt
+    source_agent: system
+    must_preserve_verbatim: true
+    notes: Official Minisforum 895D7 product page supplied in the incident.
+  - kind: agent_report
+    source_agent: unknown
+    must_preserve_verbatim: true
+    notes: VideoCardz independent launch report dated around 2026-08-18.
+expected:
+  classification: [EDITORIAL_TRIAGE_FAILURE, NOVELTY_FAILURE, FALSE_NEGATIVE]
+  status: RESOLVED
+  root_cause: "Exact-SKU chronology was not established before a negative editorial verdict; sibling/family age was incorrectly treated as target-SKU age."
+  root_cause_must_not_be_invented: true
+  preserves_original_claim: true
+  preserves_superseding_claim: true
+  preserves_contradiction: true
+  resolution_linked: true
+  lesson_linked: true
+  provenance_required: true
+claims:
+  - id: DB-011-c1
+    text: "The Minisforum 895D7 Radar hit was probably stale because the related 139D7 sibling and family/chassis concept already existed."
+    authority_domain: agent_assertion
+    expected_fate: superseded
+  - id: DB-011-c2
+    text: "The exact 895D7 SKU was a legitimate new Minisforum launch."
+    authority_domain: owner_observation
+    expected_fate: retained
+  - id: DB-011-c3
+    text: "VideoCardz independently reported the 895D7 launch."
+    authority_domain: agent_report
+    expected_fate: retained
+fix: "Before NOT_NEW, STALE, NOISE, or equivalent negative editorial classification, verify dated evidence for the exact model/SKU/configuration. If exact chronology is not established, use NOVELTY_UNVERIFIED or the repository's equivalent uncertain state."
+lesson: "Family or chassis age is not target-SKU age. A sibling model is neutral context until exact-model chronology is verified; ambiguous evidence must not increase confidence in a negative verdict."
+clankops_consequence: "OEM Radar HIT remains a valid discovery outcome unless Radar evidence is disproven. Editorial triage must separate family age from target SKU age and preserve uncertainty rather than suppressing a candidate."
+relationships:
+  - type: EXPLICIT
+    related_case_id: DB-002
+    note: First-seen/baseline novelty is related, but this case concerns downstream exact-SKU editorial triage.
+  - type: EXPLICIT
+    related_case_id: DB-008
+    note: Historical novelty firewall cousin; sibling evidence must not substitute for target chronology.
+search_should_find:
+  - query: "new SKU older sibling same chassis"
+    must_include_case: true
+  - query: "OEM Radar false negative editorial triage"
+    must_include_case: true
+  - query: "exact model chronology variant launch"
+    must_include_case: true
+  - query: "Minisforum 895D7 139D7"
+    must_include_case: true
+  - query: "catalogue dredge sibling model"
+    must_include_case: true
+unresolved_questions:
+  - Medion ERAZER candidates require separate exact-SKU review only where their negative classification lacked dated model-specific evidence.
+sources_surveyed:
+  - "https://store.minisforum.com/products/minisforum-895d7-mini-pc"
+  - "https://store.minisforum.com/products/minisforum-139d7-mini-pc"
+  - "https://videocardz.com/newz/minisforum-launches-8-47l-pc-with-ryzen-9-8945hx-and-rx-9060-xt-at-1639"
+  - "User incident report: DIAGNOSTIC BENCH INCIDENT — GPT FALSE-NEGATIVE TRIAGE OF VALID OEM RADAR HIT"

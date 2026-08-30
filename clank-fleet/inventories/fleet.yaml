@@ -23,6 +23,7 @@ expected_repositories:
 - semiconductor-intelligence
 - free-game-tracker
 - oem-radar
+- cvc-clank
 repositories:
 - name: watch-clank
   canonical_url: https://github.com/anil-ganti-nbc/watch-clank
@@ -76,6 +77,17 @@ repositories:
   canonical_url: https://github.com/anil-ganti-nbc/oem-radar
   classification: CLANK
   deployment_state: RUNNING
+- name: cvc-clank
+  canonical_url: https://github.com/anil-ganti-nbc/cvc-clank
+  classification: CLANK
+  deployment_state: NOT_APPLICABLE
+  lifecycle: OPERATIONAL
+  execution_model: OPERATOR_TRIGGERED
+  scheduling: NONE
+  role: Cross-Clank institutional evidence memory and learning/ratification support
+  primary_inputs: Diagnostic reports; incident artifacts; success-pattern evidence; migration/restore evidence; operator-supplied evidence packages
+  primary_outputs: Append-only evidence records; trigger checks; review recommendations; support-grade review packages; ratification references; corpus integrity results
+  dependencies: Local frozen CVC corpus; operator-provided evidence; optional reasoning provider, disabled by default
 deployments:
 - failure_domain: hetzner-fleet
   location_type: HETZNER

@@ -1,7 +1,7 @@
 # Unified Clank Platform
 
 > **Phase 0: PROTOTYPE CONTROL PLANE — promotion frozen.** The canonical
-> 13-repository deployment ledger is `clank-fleet/inventories/fleet.yaml`;
+> 14-repository deployment ledger is `clank-fleet/inventories/fleet.yaml`;
 > unresolved deployment facts remain explicit `UNKNOWN` values.
 
 > **Status:** Stage 1A — Fleet foundation + OEM Radar & Feature Phone read-only adapters  
@@ -60,6 +60,15 @@ Production scrapers, live NAS paths, real auth, production DB mutation, Hermes/C
 ## Stages
 
 See `STAGE_ROADMAP_V3.md`. Current branch target: **1A** (on top of Architecture v3).
+
+## Diagnostic → CVC handoff
+
+Diagnostic answers “what failed and why?” An operator can create an explicit,
+hashed CVC evidence package with `diagnostic-clank handoff create`; package
+creation does not open CVC or ingest evidence. The package accepts successful
+restore, migration, restart-survivability, bounded replay, and durable-
+delivery evidence as well as incidents. See
+[`diagnostic-clank/docs/CVC_HANDOFF.md`](diagnostic-clank/docs/CVC_HANDOFF.md).
 
 ## License
 

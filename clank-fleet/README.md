@@ -2,7 +2,10 @@
 
 > **Phase 0 status:** prototype control plane. Production promotion is frozen;
 > see [`inventories/fleet.yaml`](inventories/fleet.yaml) for the authoritative
-> 13-repository ledger. `UNKNOWN` deployment facts are not evidence of health.
+> 14-repository ledger. `UNKNOWN` deployment facts are not evidence of health.
+
+CVC Clank is registered as an `OPERATIONAL`, `OPERATOR_TRIGGERED` Clank with
+`NONE` scheduling; the registry does not represent it as a collector or deployment.
 
 Fleet control plane shell, API, and CLI for the Unified Clank Infrastructure.
 

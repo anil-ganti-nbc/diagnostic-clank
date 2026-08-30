@@ -105,6 +105,28 @@ def cmd_identity(_: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_handoff_create(args: argparse.Namespace) -> int:
+    from diagnostic_clank.handoff import create_handoff
+
+    try:
+        payload = create_handoff(
+            args.file,
+            args.output,
+            source_repository=args.source_repository,
+            source_revision=args.source_revision,
+        )
+    except (OSError, ValueError) as exc:
+        print(f"handoff refused: {exc}", file=sys.stderr)
+        return 2
+    print(json.dumps({
+        "created": str(Path(args.output).resolve()),
+        "schema_version": payload["schema_version"],
+        "artifact_sha256": payload["provenance"]["artifact_sha256"],
+        "ingestion": "NOT_PERFORMED — operator must explicitly run cvc ingest",
+    }, indent=2))
+    return 0
+
+
 def cmd_backup(args: argparse.Namespace) -> int:
     from diagnostic_clank.backup import create_backup
     from diagnostic_clank.paths import discover_repo_root, resolve_state_paths
@@ -202,6 +224,16 @@ def main(argv: list[str] | None = None) -> int:
 
     p_identity = sub.add_parser("identity", help="Report the source revision baked into this build")
     p_identity.set_defaults(func=cmd_identity)
+
+    p_handoff = sub.add_parser("handoff", help="Explicit evidence-package helpers")
+    handoff_sub = p_handoff.add_subparsers(dest="handoff_cmd", required=True)
+    p_create_handoff = handoff_sub.add_parser(
+        "create", help="Create a CVC handoff package; does not ingest it")
+    p_create_handoff.add_argument("--file", required=True, help="operator-authored source JSON")
+    p_create_handoff.add_argument("--output", required=True, help="handoff JSON output path")
+    p_create_handoff.add_argument("--source-repository", default=None)
+    p_create_handoff.add_argument("--source-revision", default=None)
+    p_create_handoff.set_defaults(func=cmd_handoff_create)
 
     args = parser.parse_args(argv)
     return int(args.func(args) or 0)

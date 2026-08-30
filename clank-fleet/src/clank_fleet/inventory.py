@@ -32,6 +32,7 @@ EXPECTED_REPOSITORIES = frozenset(
         "semiconductor-intelligence",
         "free-game-tracker",
         "oem-radar",
+        "cvc-clank",
     }
 )
 

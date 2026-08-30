@@ -1,7 +1,11 @@
 # Canonical fleet inventory
 
-`inventories/fleet.yaml` is the Phase 0 control-plane ledger for the 13 reviewed
+`inventories/fleet.yaml` is the Phase 0 control-plane ledger for the 14 reviewed
 repositories. It records repository truth separately from deployment truth.
+
+CVC Clank is registered as an operational, operator-triggered Clank with no host
+deployment and no scheduler; the registry records its repository identity without
+inventing deployment evidence.
 
 An exact `source_sha` means only that the repository head was inspected. It is
 not evidence that the commit is deployed. Until a maintainer verifies a host,

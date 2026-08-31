@@ -75,7 +75,25 @@ CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 MIGRATIONS: dict[str, str] = {
     "2": "ALTER TABLE agent_outputs ADD COLUMN external_ref TEXT;",
 }
-_SHA_RE = re.compile(r"\b([0-9a-f]{7,40})\b", re.I)
+_GIT_SHA40_RE = re.compile(
+    r"(?<![0-9a-fA-F])(?<!sha256:)(?<!sha256=)([0-9a-fA-F]{40})(?![0-9a-fA-F])"
+)
+
+
+def extract_related_git_revision(raw_text: str) -> str | None:
+    """Return a 40-char git SHA from raw_text, or None.
+
+    Content hashes (`sha256:<hex>`, `sha256=<hex>`) and short hex fragments
+    (`rec-<16 hex>`) must not be persisted as related_git_revision. Absence
+    stays None (UNKNOWN), never a fabricated revision.
+    """
+    for match in _GIT_SHA40_RE.finditer(raw_text):
+        start = match.start()
+        prefix = raw_text[max(0, start - 7):start].lower()
+        if prefix.endswith("sha256:") or prefix.endswith("sha256="):
+            continue
+        return match.group(1).lower()
+    return None
 
 class AgentOutputInbox:
     def __init__(self, db_path: Path | str, registry: ClankRegistry) -> None:
@@ -161,10 +179,8 @@ class AgentOutputInbox:
             raw_text=raw_text, raw_text_hash=text_hash(raw_text), misc_source=misc_source,
             session_label=session_label, related_diagnostic_case_id=related_diagnostic_case_id,
             external_ref=external_ref,
+            related_git_revision=extract_related_git_revision(raw_text),
         )
-        shas = _SHA_RE.findall(raw_text)
-        if shas:
-            rec.related_git_revision = shas[0]
         self._con.execute(
             """INSERT INTO agent_outputs (output_id,created_at,agent_family,primary_clank_id,
                related_clank_ids_json,output_type,raw_text,raw_text_hash,related_diagnostic_case_id,

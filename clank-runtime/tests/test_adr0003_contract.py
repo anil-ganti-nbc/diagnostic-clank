@@ -310,3 +310,44 @@ def test_raw_hash_semantics_untouched(inbox):
     rec = inbox.save(agent_family=AgentFamily.MISC, primary_clank_id="watch-clank",
                      raw_text="hash check", misc_source="m", external_ref="rec-h")
     assert len(rec.raw_text_hash) == 64
+
+
+def test_motherclank_recommendation_text_does_not_set_git_revision(inbox):
+    """Motherclank M3 text contains rec-<16hex> and sha256:<64hex>.
+    Those must not be stored as related_git_revision."""
+    from clank_runtime.knowledge.inbox import extract_related_git_revision
+
+    rec_id = "rec-" + "ab" * 8
+    content = "a" * 64
+    text = (
+        f"RECOMMENDATION {rec_id}\n"
+        "title: Stale run detected on watch-clank\n"
+        "clank: watch-clank\n"
+        f"chain_hash: sha256:{content}\n"
+        f"generated_from: 2026-08-22T07:39:55+00:00 batch_hash: sha256:{content}\n"
+        "ADVISORY ONLY — operator owns every decision; Motherclank executes nothing.\n"
+    )
+    assert extract_related_git_revision(text) is None
+    rec = inbox.save(
+        agent_family=AgentFamily.MISC, primary_clank_id="watch-clank",
+        raw_text=text, output_type=OutputType.RECOMMENDATION,
+        misc_source="motherclank-m3/m3-r1", external_ref=rec_id,
+    )
+    assert rec.related_git_revision is None
+
+
+def test_extract_related_git_revision_accepts_exact_40_char_sha():
+    from clank_runtime.knowledge.inbox import extract_related_git_revision
+
+    sha = "e20eeb3c" + "0" * 32
+    assert len(sha) == 40
+    text = f"checkout at {sha} for watch-clank"
+    assert extract_related_git_revision(text) == sha
+
+
+def test_extract_related_git_revision_skips_short_hex_and_sha256_prefix():
+    from clank_runtime.knowledge.inbox import extract_related_git_revision
+
+    assert extract_related_git_revision("rec-abcdef0123456789") is None
+    assert extract_related_git_revision("sha256:" + "ab" * 32) is None
+    assert extract_related_git_revision("deadbee") is None

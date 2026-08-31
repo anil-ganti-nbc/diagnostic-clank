@@ -455,7 +455,7 @@ def render_report_detail(
 <div class=kv><b>Type</b><span>{e(rec.output_type.value)}</span></div>
 <div class=kv><b>Ingested</b><span>{e(rec.created_at)}</span></div>
 <div class=kv><b>SHA-256</b><span>{e(rec.raw_text_hash)}</span></div>
-<div class=kv><b>Detected git revision</b><span>{e(rec.related_git_revision) or "—"}</span></div>
+<div class=kv><b>Related git SHA (40-char only)</b><span>{e(rec.related_git_revision) or "—"}</span></div>
 <div class=kv><b>Session</b><span>{e(rec.session_label) or "—"}</span></div>
 </div>
 <h2>Auto-extracted claims (heuristic, deterministic)</h2><div class=card>{f"<ul>{claim_rows}</ul>" if claim_rows else "<div class=empty>None extracted.</div>"}</div>

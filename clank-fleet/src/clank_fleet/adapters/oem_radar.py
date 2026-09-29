@@ -131,6 +131,7 @@ class OemRadarAdapter:
         now = datetime.now(UTC)
         sources: list[SourceHealthEntry] = []
         warnings: list[str] = []
+        last_attempt = None
         if not self.db_path.exists():
             return HealthPayload(
                 clank_id=CLANK_ID,
@@ -143,6 +144,11 @@ class OemRadarAdapter:
         assert con is not None
         try:
             if table_exists(con, "crawler_runs"):
+                latest_run = con.execute(
+                    "SELECT finished_at FROM crawler_runs ORDER BY id DESC LIMIT 1"
+                ).fetchone()
+                if latest_run:
+                    last_attempt = _parse_dt(latest_run["finished_at"])
                 rows = fetchall(
                     con,
                     """
@@ -185,8 +191,12 @@ class OemRadarAdapter:
             warnings.append("no source runs recorded")
         elif failed == len(sources):
             overall = OperationalState.FAILED
-        elif failed:
+        elif failed or any(s.status == SourceHealthStatus.DEGRADED for s in sources):
             overall = OperationalState.DEGRADED
+        elif all(s.status == SourceHealthStatus.UNKNOWN for s in sources):
+            overall = OperationalState.UNKNOWN
+        elif any(s.status != SourceHealthStatus.OK for s in sources):
+            overall = OperationalState.WARNING
 
         last_success = None
         for s in sources:
@@ -198,7 +208,7 @@ class OemRadarAdapter:
             overall_status=overall,
             sources=sources,
             last_success_at=last_success,
-            last_attempt_at=now,
+            last_attempt_at=last_attempt,
             warnings=warnings,
             is_stale_cache=False,
             observed_at=now,

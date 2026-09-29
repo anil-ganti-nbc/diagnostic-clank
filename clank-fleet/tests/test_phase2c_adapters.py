@@ -181,6 +181,24 @@ def test_ktw_adapter_blocked_source_never_reads_healthy(ktw_db):
     assert all(e.event_count is None for e in env)  # no event lane by policy
 
 
+def test_ktw_one_db_snapshot_does_not_claim_delivery_absence(ktw_db):
+    # Live KTW delivery is persisted in a separate notification database. A
+    # collection-DB-only adapter must not read an adjacent, ungoverned ledger
+    # or turn its omission into "unsupported" or zero delivered messages.
+    ledger = ktw_db.with_name("korean_tech_wire_notifications.db")
+    with sqlite3.connect(ledger) as con:
+        con.execute("CREATE TABLE notifications (id INTEGER PRIMARY KEY, status TEXT)")
+        con.execute("INSERT INTO notifications VALUES (1, 'SENT')")
+    adapter = KoreanTechWireAdapter(db_path=ktw_db)
+
+    assert adapter.capability_states()["delivery"]["state"] == "unknown_or_unverified"
+    assert "separate notification database" in adapter.capability_states()["delivery"]["evidence"]
+    assert adapter.capabilities().supports_delivery_accounting is False
+    assert all(row.delivery_count is None for row in adapter.telemetry(limit=5))
+    assert adapter.last_run() is not None  # main-DB collection evidence remains available
+    assert adapter.health().sources
+
+
 def test_adapters_are_read_only(tmp_path, watch_db):
     """Open the fixture copy, run every adapter entrypoint, assert file mtime/hash unchanged."""
     import hashlib

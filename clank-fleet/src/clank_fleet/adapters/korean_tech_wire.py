@@ -1,10 +1,10 @@
 """Korean Tech Wire read-only Fleet adapter.
 
-Phase 2C onboarding. KTW is a collection-only intelligence system by explicit
-editorial policy (no events, no notifications), so this adapter exposes
+Phase 2C onboarding. This adapter reads the KTW collection database only:
 source lifecycle, per-source run health (append-only source_run_health),
-article throughput and feedback presence. Event/delivery capabilities are
-reported as unsupported — that absence IS the domain truth.
+article throughput, and feedback presence. KTW's live sender records delivery
+in a separate notification database. That ledger is outside this one-DB
+observer input, so delivery accounting is unknown, not absent or zero.
 """
 
 from __future__ import annotations
@@ -55,8 +55,10 @@ class KoreanTechWireAdapter:
             "events": {"state": "unsupported_by_policy",
                        "evidence": "collection-only intelligence system by "
                                    "explicit editorial policy"},
-            "delivery": {"state": "unsupported_by_policy",
-                         "evidence": "no alerts by editorial policy"},
+            "delivery": {"state": "unknown_or_unverified",
+                         "evidence": "live sender uses a separate notification "
+                                     "database not included in this adapter's "
+                                     "governed collection-DB input"},
             "qc": {"state": "active",
                    "evidence": "feedback rows via qc_records/qc_summary"},
             "scheduler_trace": {"state": "supported_unconfigured",
@@ -92,7 +94,7 @@ class KoreanTechWireAdapter:
             supports_health=True,
             supports_last_run=True,
             supports_telemetry=True,
-            supports_delivery_accounting=False,  # no delivery exists by editorial policy
+            supports_delivery_accounting=False,  # separate notification DB is not observed here
             supports_version=True,
             supports_manual_run=False,
             supports_local_fallback=False,

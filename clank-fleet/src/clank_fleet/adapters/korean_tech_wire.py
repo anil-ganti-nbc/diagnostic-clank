@@ -324,9 +324,11 @@ class KoreanTechWireAdapter:
         freeform by design; it is preserved verbatim and fleet-normalization
         happens only where explicitly defensible."""
         con = open_readonly(self.db_path)
-        if con is None or not table_exists(con, "article_feedback"):
-            return []
+        if con is None:
+            raise RuntimeError("KTW QC collection database is unavailable")
         try:
+            if not table_exists(con, "article_feedback"):
+                raise RuntimeError("KTW QC article_feedback table is absent")
             rows = fetchall(
                 con,
                 """
@@ -343,8 +345,6 @@ class KoreanTechWireAdapter:
                 rec["subject_type"] = "article"
                 out.append(rec)
             return out
-        except sqlite3.Error:
-            return []
         finally:
             con.close()
 

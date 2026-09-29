@@ -199,6 +199,35 @@ def test_ktw_one_db_snapshot_does_not_claim_delivery_absence(ktw_db):
     assert adapter.health().sources
 
 
+def test_ktw_qc_records_distinguish_empty_from_failed_read(tmp_path):
+    """A missing or unreadable feedback source is not an empty QC corpus."""
+    db_path = tmp_path / "ktw_qc.db"
+    with sqlite3.connect(db_path) as con:
+        con.execute("""CREATE TABLE article_feedback (
+            id INTEGER PRIMARY KEY, outcome TEXT, article_id INTEGER,
+            note TEXT, created_at TEXT)""")
+    adapter = KoreanTechWireAdapter(db_path=db_path)
+    assert adapter.qc_records() == []  # genuine empty table
+
+    with sqlite3.connect(db_path) as con:
+        con.execute("INSERT INTO article_feedback VALUES "
+                    "(1, 'accepted', 42, 'synthetic', '2026-09-29T00:00:00Z')")
+    assert adapter.qc_records()[0]["original_record_id"] == 1
+
+    with sqlite3.connect(db_path) as con:
+        con.execute("DROP TABLE article_feedback")
+    with pytest.raises(RuntimeError, match="table is absent"):
+        adapter.qc_records()
+
+    with sqlite3.connect(db_path) as con:
+        con.execute("CREATE TABLE article_feedback (id INTEGER PRIMARY KEY)")
+    with pytest.raises(sqlite3.OperationalError):
+        adapter.qc_records()
+
+    with pytest.raises(RuntimeError, match="database is unavailable"):
+        KoreanTechWireAdapter(db_path=tmp_path / "missing.db").qc_records()
+
+
 def test_adapters_are_read_only(tmp_path, watch_db):
     """Open the fixture copy, run every adapter entrypoint, assert file mtime/hash unchanged."""
     import hashlib

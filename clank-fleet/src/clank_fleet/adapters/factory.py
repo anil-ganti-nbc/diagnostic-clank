@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from clank_fleet.adapters.board_clank import BoardClankAdapter
 from clank_fleet.adapters.feature_phone import FeaturePhoneAdapter
 from clank_fleet.adapters.korean_tech_wire import KoreanTechWireAdapter
 from clank_fleet.adapters.oem_radar import OemRadarAdapter
@@ -20,6 +21,7 @@ def build_default_registry(
     watch_db: Path | str | None = None,
     smartphone_db: Path | str | None = None,
     korean_tech_wire_db: Path | str | None = None,
+    board_db: Path | str | None = None,
 ) -> FleetRegistry:
     registry = FleetRegistry()
     oem_path = Path(
@@ -47,4 +49,8 @@ def build_default_registry(
     registry.register(WatchClankAdapter(db_path=watch_path))
     registry.register(SmartphoneClankAdapter(db_path=sphone_path))
     registry.register(KoreanTechWireAdapter(db_path=ktw_path))
+    # Board observation is an explicit opt-in. Existing callers retain the
+    # validated five registrations; this does not enable any Board source.
+    if board_db is not None:
+        registry.register(BoardClankAdapter(db_path=board_db))
     return registry

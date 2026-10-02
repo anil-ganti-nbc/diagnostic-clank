@@ -222,7 +222,7 @@ class TabletClankAdapter:
         if con is None:
             return {"available": False}
         try:
-            out = {"available": True}
+            out: dict[str, bool | int | None] = {"available": True}
             for t in ("products", "observations", "change_events"):
                 out[t] = (con.execute(
                     f"SELECT COUNT(*) FROM {t}").fetchone()[0]

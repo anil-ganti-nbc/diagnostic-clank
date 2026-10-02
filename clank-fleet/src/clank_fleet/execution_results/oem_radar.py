@@ -76,6 +76,8 @@ def locate_invocation_block(log_text: str, invoked_at_iso: str,
     best_delta = None
     for i in starts:
         m = INVOCATION_MARKER.match(lines[i])
+        if m is None:
+            continue
         block_dt = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M:%S").replace(
             tzinfo=UTC)
         delta = abs((block_dt - inv_dt).total_seconds())

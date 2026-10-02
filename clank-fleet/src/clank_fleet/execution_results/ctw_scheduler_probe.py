@@ -1,4 +1,4 @@
-"""Cron log scheduler-fire probe for CTW.
+r"""Cron log scheduler-fire probe for CTW.
 
 Reads existing cron log files (written by the OS cron daemon, NOT by
 Motherclank) and extracts positive fire evidence. Strictly read-only.
@@ -14,10 +14,24 @@ scheduler traces.
 from __future__ import annotations
 
 import re
+from importlib import import_module
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
-from motherclank.scheduler_traces import make_trace
+
+@runtime_checkable
+class _TraceModule(Protocol):
+    def make_trace(self, **fields: object) -> dict[str, object]: ...
+
+
+def _trace_module() -> _TraceModule:
+    # Motherclank owns the trace schema but is not a Fleet dependency. Load
+    # the optional host integration only when this probe is invoked, and
+    # require its real callable instead of substituting a local trace schema.
+    module = import_module("motherclank.scheduler_traces")
+    if not isinstance(module, _TraceModule) or not callable(module.make_trace):
+        raise TypeError("motherclank.scheduler_traces.make_trace must be callable")
+    return module
 
 CRON_LOG_LINE_RE = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T[\d:]+Z?)\s+"
@@ -43,6 +57,7 @@ def extract_cron_fires(
     if not log_dir.exists():
         return []
 
+    trace_module = _trace_module()
     traces = []
     for log_file in sorted(log_dir.glob("cron-*.log")):
         try:
@@ -59,7 +74,7 @@ def extract_cron_fires(
                 if ts_match else None
             if since and fired_at and fired_at < since:
                 continue
-            traces.append(make_trace(
+            traces.append(trace_module.make_trace(
                 trace_id=f"cron-{clank_id}-{len(traces)}",
                 clank_id=clank_id,
                 instance_id=instance_id,

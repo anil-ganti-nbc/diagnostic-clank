@@ -14,7 +14,6 @@ from clank_runtime.contracts.adapter import (
     AdapterCapabilities,
     AdapterDescriptor,
     AdapterStatus,
-    UnsupportedOperationError,
 )
 from clank_runtime.contracts.enums import OperationalState
 from clank_runtime.contracts.health import HealthPayload
@@ -25,7 +24,7 @@ log = logging.getLogger("clank_fleet.registry")
 
 @runtime_checkable
 class FleetAdapter(Protocol):
-    """Stage 1A read-oriented adapter protocol."""
+    """Six-method observer core; richer evidence is explicitly optional."""
 
     def identity(self) -> AdapterDescriptor: ...
 
@@ -37,9 +36,28 @@ class FleetAdapter(Protocol):
 
     def last_run(self) -> dict[str, Any] | None: ...
 
+    def capability_states(self) -> dict[str, dict[str, str]]: ...
+
+
+@runtime_checkable
+class SupportsTelemetry(Protocol):
     def telemetry(self, *, limit: int = 20) -> list[TelemetryEnvelope]: ...
 
+
+@runtime_checkable
+class SupportsSourceSummary(Protocol):
+
     def source_summary(self) -> list[dict[str, Any]]: ...
+
+
+@runtime_checkable
+class SupportsDiagnosticSummary(Protocol):
+    def diagnostic_summary(self) -> dict[str, Any]: ...
+
+
+@runtime_checkable
+class SupportsObserverEvidence(Protocol):
+    def observer_evidence(self) -> dict[str, Any]: ...
 
 
 @dataclass
@@ -109,14 +127,20 @@ class FleetRegistry:
 
     def safe_telemetry(self, clank_id: str, *, limit: int = 20) -> list[TelemetryEnvelope]:
         try:
-            return self.get(clank_id).adapter.telemetry(limit=limit)
+            adapter = self.get(clank_id).adapter
+            if isinstance(adapter, SupportsTelemetry) and callable(adapter.telemetry):
+                return adapter.telemetry(limit=limit)
+            return []
         except Exception as exc:  # noqa: BLE001
             log.exception("adapter_telemetry_failed clank_id=%s", clank_id)
             return []
 
     def safe_sources(self, clank_id: str) -> list[dict[str, Any]]:
         try:
-            return self.get(clank_id).adapter.source_summary()
+            adapter = self.get(clank_id).adapter
+            if isinstance(adapter, SupportsSourceSummary) and callable(adapter.source_summary):
+                return adapter.source_summary()
+            return []
         except Exception as exc:  # noqa: BLE001
             log.exception("adapter_sources_failed clank_id=%s", clank_id)
             return []

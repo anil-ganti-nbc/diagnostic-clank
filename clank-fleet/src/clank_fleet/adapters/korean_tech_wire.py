@@ -285,6 +285,22 @@ class KoreanTechWireAdapter:
             con.close()
         return out
 
+    def source_summary(self) -> list[dict[str, Any]]:
+        health = self.health()
+        return [
+            {
+                "source_id": s.source_id,
+                "lifecycle": "production",
+                "health": s.status.value,
+                "last_success_at": (
+                    s.last_success_at.isoformat() if s.last_success_at else None
+                ),
+                "observed_count": s.observed_count,
+                "warnings": s.warnings,
+            }
+            for s in health.sources
+        ]
+
     def article_summary(self) -> dict[str, Any]:
         con = open_readonly(self.db_path)
         if con is None:

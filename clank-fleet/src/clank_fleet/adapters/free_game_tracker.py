@@ -103,8 +103,8 @@ class FreeGameTrackerAdapter:
     # -- store helpers ----------------------------------------------------
 
     def _table_counts(self, con: sqlite3.Connection,
-                      tables: tuple[str, ...]) -> dict[str, int]:
-        out: dict[str, int] = {}
+                      tables: tuple[str, ...]) -> dict[str, int | None]:
+        out: dict[str, int | None] = {}
         for t in tables:
             if table_exists(con, t):
                 try:

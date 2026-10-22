@@ -30,7 +30,7 @@ jobs:
           cache: pip
       - name: Clean locked installation
         run: |
-          python -m pip install uv==0.11.32 build==1.2.2.post1 pyright==1.1.405
+          python -m pip install uv==0.13.4 build==1.2.2.post1 pyright==1.1.405
           python -m pip install -e "./clank-runtime[dev]" -e "./clank-fleet[dev]" -e "./clank-desktop[dev]" -e "./diagnostic-clank[dev]"
       - name: Verify dependency lock
         run: |
@@ -66,7 +66,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1
       - name: Clean locked installation
         run: |
-          python -m pip install uv==0.11.32 build==1.2.2.post1 pyright==1.1.405
+          python -m pip install uv==0.13.4 build==1.2.2.post1 pyright==1.1.405
           python -m pip install -e "./clank-runtime[dev]" -e "./clank-fleet[dev]" -e "./clank-desktop[dev]" -e "./diagnostic-clank[dev]"
       - name: Complete test collection
         shell: bash
@@ -106,7 +106,7 @@ jobs:
           "$(go env GOPATH)/bin/gitleaks" dir . --redact --no-banner
       - name: Install and audit locked dependencies
         run: |
-          python -m pip install uv==0.11.32 build==1.2.2.post1 pyright==1.1.405
+          python -m pip install uv==0.13.4 build==1.2.2.post1 pyright==1.1.405
           python -m pip install -e "./clank-runtime[dev]" -e "./clank-fleet[dev]" -e "./clank-desktop[dev]" -e "./diagnostic-clank[dev]"
           python -m pip install pip-audit==2.9.0
           pip-audit --progress-spinner off
@@ -122,7 +122,7 @@ jobs:
           cache: pip
       - name: Build from clean source
         run: |
-          python -m pip install uv==0.11.32 build==1.2.2.post1 pyright==1.1.405
+          python -m pip install uv==0.13.4 build==1.2.2.post1 pyright==1.1.405
           python -m pip install -e "./clank-runtime[dev]" -e "./clank-fleet[dev]" -e "./clank-desktop[dev]" -e "./diagnostic-clank[dev]"
           python -m pip install build==1.2.2.post1 cyclonedx-bom==7.1.0
           mkdir -p dist
@@ -151,7 +151,7 @@ jobs:
       - name: Install Qt runtime library
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libegl1
       - run: |
-          python -m pip install uv==0.11.32 build==1.2.2.post1 pyright==1.1.405
+          python -m pip install uv==0.13.4 build==1.2.2.post1 pyright==1.1.405
           python -m pip install -e "./clank-runtime[dev]" -e "./clank-fleet[dev]" -e "./clank-desktop[dev]" -e "./diagnostic-clank[dev]"
       - name: Stateful integrity and restore smoke
         run: |
@@ -168,7 +168,7 @@ jobs:
       - name: Clean locked installation
         shell: pwsh
         run: |
-          python -m pip install uv==0.11.32 build==1.2.2.post1 pyright==1.1.405
+          python -m pip install uv==0.13.4 build==1.2.2.post1 pyright==1.1.405
           python -m pip install -e "./clank-runtime[dev]" -e "./clank-fleet[dev]" -e "./clank-desktop[dev]" -e "./diagnostic-clank[dev]"
       - name: Collect and run full suite
         shell: pwsh

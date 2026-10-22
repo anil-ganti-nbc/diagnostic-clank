@@ -1,4 +1,4 @@
-"""Cron log scheduler-fire probe for CTW.
+r"""Cron log scheduler-fire probe for CTW.
 
 Reads existing cron log files (written by the OS cron daemon, NOT by
 Motherclank) and extracts positive fire evidence. Strictly read-only.
@@ -17,12 +17,45 @@ import re
 from pathlib import Path
 from typing import Any
 
-from motherclank.scheduler_traces import make_trace
-
 CRON_LOG_LINE_RE = re.compile(
     r"^(?P<timestamp>\d{4}-\d{2}-\d{2}T[\d:]+Z?)\s+"
     r"(?P<content>.*)"
 )
+
+
+def make_trace(
+    *,
+    trace_id: str,
+    clank_id: str,
+    instance_id: str,
+    lane_id: str,
+    scheduler_type: str,
+    unit_or_job: str,
+    invoked_at: str | None,
+    process_started: bool | None,
+    evidence_source: str,
+    notes: str,
+) -> dict[str, Any]:
+    """Build the scheduler-trace dict this probe records.
+
+    Motherclank consumes traces and is not a dependency of this package.
+    ``observed_at`` is the invocation timestamp when the log line has one.
+    """
+    return {
+        "schema_version": 1,
+        "trace_id": trace_id,
+        "clank_id": clank_id,
+        "instance_id": instance_id,
+        "lane_id": lane_id,
+        "scheduler_type": scheduler_type,
+        "unit_or_job": unit_or_job,
+        "invoked_at": invoked_at,
+        "process_started": process_started,
+        "evidence_source": evidence_source,
+        "notes": notes,
+        "observed_at": invoked_at,
+        "origin": "probe",
+    }
 
 
 def extract_cron_fires(
